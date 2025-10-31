@@ -1,0 +1,45 @@
+{
+    "name": "folyoaggregator/api",
+    "description": "Cryptocurrency Data Aggregator API",
+    "type": "project",
+    "require": {
+        "php": "^8.1",
+        "ccxt/ccxt": "^4.0",
+        "vlucas/phpdotenv": "^5.5",
+        "predis/predis": "^2.2",
+        "monolog/monolog": "^3.5",
+        "ext-pdo": "*",
+        "ext-json": "*",
+        "ext-curl": "*",
+        "ext-mbstring": "*"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^10.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "FolyoAggregator\\": "src/"
+        },
+        "files": [
+            "src/helpers.php"
+        ]
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "phpunit",
+        "migrate": "php scripts/migrate.php",
+        "worker:prices": "php scripts/workers/price-updater.php",
+        "worker:history": "php scripts/workers/historical-collector.php"
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "preferred-install": "dist",
+        "sort-packages": true
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

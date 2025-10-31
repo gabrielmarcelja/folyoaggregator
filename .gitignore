@@ -1,0 +1,44 @@
+# Dependencies
+/vendor/
+composer.lock
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Logs
+/logs/*.log
+*.log
+
+# Cache
+/cache/
+*.cache
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Testing
+/coverage/
+.phpunit.result.cache
+
+# Temporary files
+/tmp/
+*.tmp
+*.temp
+
+# API Keys and Secrets
+config/api_keys.php
+config/secrets.php
+
+# Database dumps
+*.sql
+*.dump
+
+# Apache logs specific to this project
+/var/log/apache2/folyoaggregator-*
