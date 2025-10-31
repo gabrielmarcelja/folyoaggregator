@@ -68,20 +68,223 @@ $router->get('/status', function() {
 // Asset Endpoints
 // ===========================
 
-$router->get('/assets', function() {
+// Register specific routes first (before parameterized routes)
+$router->get('/assets/search', function() {
     $db = Database::getInstance();
 
+    $query = isset($_GET['q']) ? trim($_GET['q']) : '';
+    $limit = isset($_GET['limit']) ? min(100, (int)$_GET['limit']) : 20;
+
+    if (strlen($query) < 2) {
+        throw new Exception("Search query must be at least 2 characters");
+    }
+
+    // Search by symbol or name
     $assets = $db->fetchAll("
-        SELECT symbol, name, slug, market_cap_rank
+        SELECT
+            symbol,
+            name,
+            cmc_id,
+            market_cap_rank,
+            is_tradeable,
+            market_cap,
+            icon_url
         FROM assets
         WHERE is_active = 1
-        ORDER BY market_cap_rank ASC
-    ");
+        AND (
+            symbol LIKE ? OR
+            name LIKE ?
+        )
+        ORDER BY
+            CASE
+                WHEN symbol = ? THEN 1
+                WHEN symbol LIKE ? THEN 2
+                WHEN name = ? THEN 3
+                WHEN name LIKE ? THEN 4
+                ELSE 5
+            END,
+            market_cap_rank ASC
+        LIMIT ?
+    ", [
+        "%$query%",
+        "%$query%",
+        $query,
+        "$query%",
+        $query,
+        "$query%",
+        $limit
+    ]);
+
+    return [
+        'success' => true,
+        'query' => $query,
+        'data' => $assets,
+        'count' => count($assets),
+        'timestamp' => date('c')
+    ];
+});
+
+$router->get('/assets/tradeable', function() {
+    $db = Database::getInstance();
+
+    $limit = isset($_GET['limit']) ? min(500, (int)$_GET['limit']) : 100;
+
+    $assets = $db->fetchAll("
+        SELECT
+            a.symbol,
+            a.name,
+            a.cmc_id,
+            a.market_cap_rank,
+            a.market_cap,
+            a.volume_24h,
+            a.percent_change_24h,
+            a.icon_url,
+            a.preferred_quote_currency,
+            JSON_LENGTH(a.tradeable_exchanges) as exchange_count,
+            a.tradeable_exchanges
+        FROM assets a
+        WHERE a.is_active = 1
+        AND a.is_tradeable = 1
+        ORDER BY a.market_cap_rank ASC
+        LIMIT ?
+    ", [$limit]);
+
+    // Parse tradeable exchanges JSON
+    foreach ($assets as &$asset) {
+        $asset['tradeable_exchanges'] = json_decode($asset['tradeable_exchanges'], true) ?? [];
+    }
 
     return [
         'success' => true,
         'data' => $assets,
         'count' => count($assets),
+        'timestamp' => date('c')
+    ];
+});
+
+$router->get('/assets/market-overview', function() {
+    $db = Database::getInstance();
+
+    // Get market overview statistics
+    $overview = $db->fetchOne("
+        SELECT
+            COUNT(*) as total_assets,
+            SUM(CASE WHEN is_tradeable = 1 THEN 1 ELSE 0 END) as tradeable_assets,
+            SUM(market_cap) as total_market_cap,
+            SUM(volume_24h) as total_volume_24h,
+            AVG(percent_change_24h) as avg_change_24h,
+            COUNT(CASE WHEN percent_change_24h > 0 THEN 1 END) as gainers,
+            COUNT(CASE WHEN percent_change_24h < 0 THEN 1 END) as losers,
+            COUNT(CASE WHEN percent_change_24h = 0 OR percent_change_24h IS NULL THEN 1 END) as unchanged
+        FROM assets
+        WHERE is_active = 1
+        AND market_cap_rank IS NOT NULL
+    ");
+
+    // Get top gainers and losers
+    $gainers = $db->fetchAll("
+        SELECT symbol, name, percent_change_24h, market_cap_rank, icon_url
+        FROM assets
+        WHERE is_active = 1
+        AND percent_change_24h IS NOT NULL
+        AND market_cap_rank <= 200
+        ORDER BY percent_change_24h DESC
+        LIMIT 5
+    ");
+
+    $losers = $db->fetchAll("
+        SELECT symbol, name, percent_change_24h, market_cap_rank, icon_url
+        FROM assets
+        WHERE is_active = 1
+        AND percent_change_24h IS NOT NULL
+        AND market_cap_rank <= 200
+        ORDER BY percent_change_24h ASC
+        LIMIT 5
+    ");
+
+    // Get last sync info
+    $lastSync = $db->fetchOne("
+        SELECT sync_type, status, coins_processed, start_time, end_time
+        FROM cmc_sync_log
+        WHERE status = 'completed'
+        ORDER BY created_at DESC
+        LIMIT 1
+    ");
+
+    return [
+        'success' => true,
+        'data' => [
+            'overview' => $overview,
+            'top_gainers' => $gainers,
+            'top_losers' => $losers,
+            'last_sync' => $lastSync
+        ],
+        'timestamp' => date('c')
+    ];
+});
+
+$router->get('/assets', function() {
+    $db = Database::getInstance();
+
+    // Parse query parameters
+    $limit = isset($_GET['limit']) ? min(1000, (int)$_GET['limit']) : 100;
+    $offset = isset($_GET['offset']) ? (int)$_GET['offset'] : 0;
+    $tradeable_only = isset($_GET['tradeable_only']) ? filter_var($_GET['tradeable_only'], FILTER_VALIDATE_BOOLEAN) : false;
+    $sort = isset($_GET['sort']) ? $_GET['sort'] : 'market_cap_rank';
+
+    // Build WHERE clause
+    $where = ['is_active = 1'];
+    $params = [];
+
+    if ($tradeable_only) {
+        $where[] = 'is_tradeable = 1';
+    }
+
+    // Validate sort field
+    $valid_sorts = ['market_cap_rank', 'market_cap', 'volume_24h', 'symbol', 'name', 'percent_change_24h'];
+    if (!in_array($sort, $valid_sorts)) {
+        $sort = 'market_cap_rank';
+    }
+
+    $whereClause = implode(' AND ', $where);
+
+    $assets = $db->fetchAll("
+        SELECT
+            symbol,
+            name,
+            slug,
+            cmc_id,
+            market_cap_rank,
+            is_tradeable,
+            market_cap,
+            volume_24h,
+            percent_change_1h,
+            percent_change_24h,
+            percent_change_7d,
+            icon_url,
+            preferred_quote_currency
+        FROM assets
+        WHERE $whereClause
+        ORDER BY $sort ASC
+        LIMIT ? OFFSET ?
+    ", array_merge($params, [$limit, $offset]));
+
+    // Get total count
+    $total = $db->fetchOne("
+        SELECT COUNT(*) as count
+        FROM assets
+        WHERE $whereClause
+    ", $params)['count'];
+
+    return [
+        'success' => true,
+        'data' => $assets,
+        'pagination' => [
+            'total' => (int)$total,
+            'limit' => $limit,
+            'offset' => $offset,
+            'count' => count($assets)
+        ],
         'timestamp' => date('c')
     ];
 });
@@ -99,6 +302,10 @@ $router->get('/assets/{symbol}', function($params) {
     if (!$asset) {
         throw new Exception("Asset not found: $symbol");
     }
+
+    // Parse JSON fields
+    $asset['tags'] = json_decode($asset['tags'], true) ?? [];
+    $asset['tradeable_exchanges'] = json_decode($asset['tradeable_exchanges'], true) ?? [];
 
     return [
         'success' => true,
@@ -276,6 +483,161 @@ $router->get('/exchanges/{exchange_id}/status', function($params) {
             'last_error' => [
                 'timestamp' => $exchangeInfo['last_error_at'],
                 'message' => $exchangeInfo['last_error_message']
+            ]
+        ],
+        'timestamp' => date('c')
+    ];
+});
+
+// ===========================
+// OHLCV/Chart Endpoints
+// ===========================
+
+$router->get('/ohlcv/{symbol}', function($params) {
+    $db = Database::getInstance();
+    $symbol = strtoupper($params['symbol']);
+
+    // Parse query parameters
+    $timeframe = $_GET['timeframe'] ?? '1h';
+    $limit = isset($_GET['limit']) ? min(1000, (int)$_GET['limit']) : 100;
+    $exchange = $_GET['exchange'] ?? 'binance';
+
+    // Get asset
+    $asset = $db->fetchOne("
+        SELECT id FROM assets WHERE symbol = ? AND is_active = 1
+    ", [$symbol]);
+
+    if (!$asset) {
+        throw new Exception("Asset not found: $symbol");
+    }
+
+    // Get exchange
+    $exchangeData = $db->fetchOne("
+        SELECT id FROM exchanges WHERE exchange_id = ?
+    ", [$exchange]);
+
+    if (!$exchangeData) {
+        throw new Exception("Exchange not found: $exchange");
+    }
+
+    // Get OHLCV data
+    $ohlcv = $db->fetchAll("
+        SELECT
+            timestamp,
+            open_price as open,
+            high_price as high,
+            low_price as low,
+            close_price as close,
+            volume
+        FROM historical_ohlcv
+        WHERE asset_id = ?
+        AND exchange_id = ?
+        AND timeframe = ?
+        ORDER BY timestamp DESC
+        LIMIT ?
+    ", [$asset['id'], $exchangeData['id'], $timeframe, $limit]);
+
+    // Reverse to get chronological order
+    $ohlcv = array_reverse($ohlcv);
+
+    return [
+        'success' => true,
+        'symbol' => $symbol,
+        'timeframe' => $timeframe,
+        'exchange' => $exchange,
+        'data' => $ohlcv,
+        'count' => count($ohlcv),
+        'timestamp' => date('c')
+    ];
+});
+
+$router->get('/chart/{symbol}', function($params) {
+    $db = Database::getInstance();
+    $symbol = strtoupper($params['symbol']);
+
+    // Get last 24 hours of aggregated prices
+    $prices = $db->fetchAll("
+        SELECT
+            ap.timestamp,
+            ap.price_vwap as price,
+            ap.total_volume_24h as volume,
+            ap.confidence_score
+        FROM aggregated_prices ap
+        JOIN assets a ON a.id = ap.asset_id
+        WHERE a.symbol = ?
+        AND ap.timestamp > NOW() - INTERVAL 24 HOUR
+        ORDER BY ap.timestamp ASC
+    ", [$symbol]);
+
+    // Format for charting libraries
+    $chartData = [
+        'labels' => array_column($prices, 'timestamp'),
+        'datasets' => [
+            [
+                'label' => 'Price (VWAP)',
+                'data' => array_column($prices, 'price'),
+                'borderColor' => 'rgb(75, 192, 192)',
+                'tension' => 0.1
+            ]
+        ]
+    ];
+
+    return [
+        'success' => true,
+        'symbol' => $symbol,
+        'chart' => $chartData,
+        'raw' => $prices,
+        'timestamp' => date('c')
+    ];
+});
+
+// ===========================
+// System Stats Endpoint
+// ===========================
+
+$router->get('/stats', function() {
+    $db = Database::getInstance();
+
+    $stats = $db->fetchOne("
+        SELECT
+            (SELECT COUNT(*) FROM assets WHERE is_active = 1) as total_assets,
+            (SELECT COUNT(*) FROM assets WHERE is_tradeable = 1) as tradeable_assets,
+            (SELECT COUNT(*) FROM prices WHERE timestamp > NOW() - INTERVAL 1 HOUR) as hourly_prices,
+            (SELECT COUNT(*) FROM prices WHERE timestamp > NOW() - INTERVAL 24 HOUR) as daily_prices,
+            (SELECT COUNT(*) FROM historical_ohlcv) as total_candles,
+            (SELECT COUNT(DISTINCT asset_id) FROM prices WHERE timestamp > NOW() - INTERVAL 1 HOUR) as active_assets,
+            (SELECT AVG(confidence_score) FROM aggregated_prices WHERE timestamp > NOW() - INTERVAL 1 HOUR) as avg_confidence,
+            (SELECT SUM(total_volume_24h) FROM aggregated_prices WHERE timestamp > NOW() - INTERVAL 1 HOUR) as total_volume
+    ");
+
+    // Database size
+    $dbSize = $db->fetchOne("
+        SELECT
+            SUM(data_length + index_length) / 1024 / 1024 as size_mb
+        FROM information_schema.tables
+        WHERE table_schema = DATABASE()
+    ");
+
+    return [
+        'success' => true,
+        'data' => [
+            'assets' => [
+                'total' => (int)$stats['total_assets'],
+                'tradeable' => (int)$stats['tradeable_assets'],
+                'active' => (int)$stats['active_assets']
+            ],
+            'collection' => [
+                'hourly_prices' => (int)$stats['hourly_prices'],
+                'daily_prices' => (int)$stats['daily_prices'],
+                'total_candles' => (int)$stats['total_candles']
+            ],
+            'quality' => [
+                'avg_confidence' => round($stats['avg_confidence'], 2),
+                'total_volume' => round($stats['total_volume'], 2)
+            ],
+            'system' => [
+                'database_size_mb' => round($dbSize['size_mb'], 2),
+                'uptime' => 'operational'
             ]
         ],
         'timestamp' => date('c')

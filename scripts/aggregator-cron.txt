@@ -1,0 +1,88 @@
+# =====================================================
+# FolyoAggregator Complete Cron Configuration
+# =====================================================
+# To install: crontab aggregator-cron.txt
+# To verify: crontab -l
+# To edit: crontab -e
+# =====================================================
+
+# Environment
+SHELL=/bin/bash
+PATH=/usr/local/bin:/usr/bin:/bin
+MAILTO=
+
+# Working directory
+FOLYO_DIR=/var/www/html/folyoaggregator
+
+# =====================================================
+# PRICE COLLECTION (High Priority)
+# =====================================================
+
+# Restart price daemon every hour (in case it crashes)
+0 * * * * cd $FOLYO_DIR && ./scripts/price-daemon.sh restart >> logs/daemon-restart.log 2>&1
+
+# Check daemon status every 10 minutes
+*/10 * * * * cd $FOLYO_DIR && ./scripts/price-daemon.sh status >> logs/daemon-status.log 2>&1
+
+# =====================================================
+# CMC SYNCHRONIZATION
+# =====================================================
+
+# Quick sync of top 20 coins every 15 minutes (no validation)
+*/15 * * * * cd $FOLYO_DIR && /usr/bin/php scripts/sync-cmc.php --limit=20 --no-validate >> logs/cmc-sync-quick.log 2>&1
+
+# Hourly sync of top 100 coins (no validation for speed)
+0 * * * * cd $FOLYO_DIR && /usr/bin/php scripts/sync-cmc.php --limit=100 --no-validate >> logs/cmc-sync-hourly.log 2>&1
+
+# Daily full sync of top 200 coins with validation (at 3 AM)
+0 3 * * * cd $FOLYO_DIR && /usr/bin/php scripts/sync-cmc.php --limit=200 >> logs/cmc-sync-daily.log 2>&1
+
+# =====================================================
+# HISTORICAL DATA COLLECTION
+# =====================================================
+
+# Collect 1h candles for top 50 coins (every 2 hours)
+0 */2 * * * cd $FOLYO_DIR && /usr/bin/php scripts/collect-historical.php --timeframe=1h --days=7 --limit=50 >> logs/ohlcv-1h.log 2>&1
+
+# Collect 4h candles for top 100 coins (twice daily at 6AM and 6PM)
+0 6,18 * * * cd $FOLYO_DIR && /usr/bin/php scripts/collect-historical.php --timeframe=4h --days=30 --limit=100 >> logs/ohlcv-4h.log 2>&1
+
+# Collect daily candles for all tradeable coins (once daily at 2 AM)
+0 2 * * * cd $FOLYO_DIR && /usr/bin/php scripts/collect-historical.php --timeframe=1d --days=90 --limit=200 >> logs/ohlcv-1d.log 2>&1
+
+# =====================================================
+# DATABASE MAINTENANCE
+# =====================================================
+
+# Clean old price data (keep only last 7 days of minute-level data)
+0 4 * * * cd $FOLYO_DIR && mariadb -u root -p1976 folyoaggregator -e "DELETE FROM prices WHERE timestamp < DATE_SUB(NOW(), INTERVAL 7 DAY);" >> logs/db-cleanup.log 2>&1
+
+# Optimize tables weekly (Sunday at 4 AM)
+0 4 * * 0 cd $FOLYO_DIR && mariadb -u root -p1976 folyoaggregator -e "OPTIMIZE TABLE prices, aggregated_prices, historical_ohlcv;" >> logs/db-optimize.log 2>&1
+
+# Backup database daily (at 5 AM)
+0 5 * * * mysqldump -u root -p1976 folyoaggregator | gzip > $FOLYO_DIR/backups/folyoaggregator_$(date +\%Y\%m\%d).sql.gz 2>> $FOLYO_DIR/logs/backup.log
+
+# =====================================================
+# LOG ROTATION
+# =====================================================
+
+# Rotate logs weekly (keep last 4 weeks)
+0 0 * * 0 cd $FOLYO_DIR/logs && find . -name "*.log" -mtime +30 -delete
+
+# Compress old logs
+0 1 * * 0 cd $FOLYO_DIR/logs && find . -name "*.log" -size +100M -exec gzip {} \;
+
+# =====================================================
+# MONITORING & ALERTS
+# =====================================================
+
+# Generate daily stats report (at 9 AM)
+0 9 * * * cd $FOLYO_DIR && /usr/bin/php scripts/generate-stats.php >> logs/daily-stats.log 2>&1
+
+# Check system health every 30 minutes
+*/30 * * * * cd $FOLYO_DIR && /usr/bin/php scripts/health-check.php >> logs/health-check.log 2>&1
+
+# =====================================================
+# END OF CRON CONFIGURATION
+# =====================================================

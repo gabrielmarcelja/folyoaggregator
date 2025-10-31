@@ -1,0 +1,11 @@
+# FolyoAggregator Cron Jobs
+# Add these lines to your crontab with: crontab -e
+
+# Sync top 100 coins from CoinMarketCap every hour
+0 * * * * /var/www/html/folyoaggregator/scripts/cron-sync.sh
+
+# Full sync of top 200 coins with validation once a day at 3 AM
+0 3 * * * cd /var/www/html/folyoaggregator && /usr/bin/php scripts/sync-cmc.php --limit=200 >> logs/cmc-sync-full.log 2>&1
+
+# Quick update of top 20 most popular coins every 15 minutes
+*/15 * * * * cd /var/www/html/folyoaggregator && /usr/bin/php scripts/sync-cmc.php --limit=20 --no-validate >> logs/cmc-sync-quick.log 2>&1

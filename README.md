@@ -1,5 +1,5 @@
 # FolyoAggregator
-
+![alt](image.png)
 ## Cryptocurrency Data Aggregator API
 
 A robust cryptocurrency data aggregation system that pulls real-time price data from multiple exchanges, calculates weighted averages, and provides a unified API for accessing cryptocurrency market data.
