@@ -6,13 +6,10 @@
 # To edit: crontab -e
 # =====================================================
 
-# Environment
+# Environment variables for cron
 SHELL=/bin/bash
-PATH=/usr/local/bin:/usr/bin:/bin
-MAILTO=
-
-# Working directory
-FOLYO_DIR=/var/www/html/folyoaggregator
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+MAILTO=""
 
 # =====================================================
 # REAL-TIME PRICE COLLECTION (30-second intervals)
@@ -20,24 +17,24 @@ FOLYO_DIR=/var/www/html/folyoaggregator
 
 # Price collector daemon (runs every minute, collects for ~50 seconds)
 # Collects real-time prices from 10 exchanges for top 50 assets
-* * * * * cd $FOLYO_DIR && /usr/bin/php scripts/collection/price-collector.php --limit=50 --interval=30 >> logs/price-collector.log 2>&1
+* * * * * cd /var/www/html/folyoaggregator && /usr/bin/php scripts/collection/price-collector.php --limit=50 --interval=30 >> logs/price-collector.log 2>&1
 
 # Alternative: Use daemon mode (uncomment to use instead of cron-based collection)
-# 0 * * * * cd $FOLYO_DIR && ./scripts/daemon/price-daemon.sh restart >> logs/daemon-restart.log 2>&1
-# */10 * * * * cd $FOLYO_DIR && ./scripts/daemon/price-daemon.sh status >> logs/daemon-status.log 2>&1
+# 0 * * * * cd /var/www/html/folyoaggregator && ./scripts/daemon/price-daemon.sh restart >> logs/daemon-restart.log 2>&1
+# */10 * * * * cd /var/www/html/folyoaggregator && ./scripts/daemon/price-daemon.sh status >> logs/daemon-status.log 2>&1
 
 # =====================================================
 # CMC SYNCHRONIZATION
 # =====================================================
 
 # Hourly sync of top 100 coins (metadata updates)
-0 * * * * cd $FOLYO_DIR && /usr/bin/php scripts/setup/sync-cmc.php --limit=100 >> logs/cmc-sync-hourly.log 2>&1
+0 * * * * cd /var/www/html/folyoaggregator && /usr/bin/php scripts/setup/sync-cmc.php --limit=100 >> logs/cmc-sync-hourly.log 2>&1
 
 # Daily full sync of top 200 coins with metadata (at 3 AM)
-0 3 * * * cd $FOLYO_DIR && /usr/bin/php scripts/setup/sync-cmc.php --limit=200 >> logs/cmc-sync-daily.log 2>&1
+0 3 * * * cd /var/www/html/folyoaggregator && /usr/bin/php scripts/setup/sync-cmc.php --limit=200 >> logs/cmc-sync-daily.log 2>&1
 
 # Weekly metadata refresh (Sundays at 2 AM)
-0 2 * * 0 cd $FOLYO_DIR && /usr/bin/php scripts/setup/sync-metadata.php >> logs/metadata-sync.log 2>&1
+0 2 * * 0 cd /var/www/html/folyoaggregator && /usr/bin/php scripts/setup/sync-metadata.php >> logs/metadata-sync.log 2>&1
 
 # =====================================================
 # HISTORICAL DATA GAP FILLING
@@ -45,46 +42,46 @@ FOLYO_DIR=/var/www/html/folyoaggregator
 
 # Fill missing candles daily at 4 AM (catches up on gaps)
 # This fills any missing 1h and 4h candles between last historical data and now
-0 4 * * * cd $FOLYO_DIR && /usr/bin/php scripts/collection/fill-recent-gap.php --limit=50 >> logs/gap-filler.log 2>&1
+0 4 * * * cd /var/www/html/folyoaggregator && /usr/bin/php scripts/collection/fill-recent-gap.php --limit=50 >> logs/gap-filler.log 2>&1
 
 # Weekly comprehensive gap check (Sundays at 5 AM, check last 7 days)
-0 5 * * 0 cd $FOLYO_DIR && /usr/bin/php scripts/collection/fill-recent-gap.php --limit=100 --lookback=7 >> logs/gap-filler-weekly.log 2>&1
+0 5 * * 0 cd /var/www/html/folyoaggregator && /usr/bin/php scripts/collection/fill-recent-gap.php --limit=100 --lookback=7 >> logs/gap-filler-weekly.log 2>&1
 
 # =====================================================
 # DATABASE MAINTENANCE
 # =====================================================
 
 # Clean old price data (keep only last 7 days of minute-level data)
-0 4 * * * cd $FOLYO_DIR && mariadb -u root -p1976 folyoaggregator -e "DELETE FROM prices WHERE timestamp < DATE_SUB(NOW(), INTERVAL 7 DAY);" >> logs/db-cleanup.log 2>&1
+0 4 * * * cd /var/www/html/folyoaggregator && mariadb -u root -p1976 folyoaggregator -e "DELETE FROM prices WHERE timestamp < DATE_SUB(NOW(), INTERVAL 7 DAY);" >> logs/db-cleanup.log 2>&1
 
 # Optimize tables weekly (Sunday at 4 AM)
-0 4 * * 0 cd $FOLYO_DIR && mariadb -u root -p1976 folyoaggregator -e "OPTIMIZE TABLE prices, aggregated_prices, historical_ohlcv;" >> logs/db-optimize.log 2>&1
+0 4 * * 0 cd /var/www/html/folyoaggregator && mariadb -u root -p1976 folyoaggregator -e "OPTIMIZE TABLE prices, aggregated_prices, historical_ohlcv;" >> logs/db-optimize.log 2>&1
 
 # Backup database daily (at 5:30 AM) - using backup-migrate.sh
-30 5 * * * cd $FOLYO_DIR && ./scripts/maintenance/backup-migrate.sh backup >> logs/backup.log 2>&1
+30 5 * * * cd /var/www/html/folyoaggregator && ./scripts/maintenance/backup-migrate.sh backup >> logs/backup.log 2>&1
 
 # =====================================================
 # LOG ROTATION
 # =====================================================
 
 # Rotate logs weekly (keep last 4 weeks)
-0 0 * * 0 cd $FOLYO_DIR/logs && find . -name "*.log" -mtime +30 -delete
+0 0 * * 0 cd /var/www/html/folyoaggregator/logs && find . -name "*.log" -mtime +30 -delete
 
 # Compress old logs
-0 1 * * 0 cd $FOLYO_DIR/logs && find . -name "*.log" -size +100M -exec gzip {} \;
+0 1 * * 0 cd /var/www/html/folyoaggregator/logs && find . -name "*.log" -size +100M -exec gzip {} \;
 
 # =====================================================
 # MONITORING & ALERTS
 # =====================================================
 
 # Generate daily stats report (at 9 AM)
-0 9 * * * cd $FOLYO_DIR && /usr/bin/php scripts/maintenance/generate-stats.php --save >> logs/daily-stats.log 2>&1
+0 9 * * * cd /var/www/html/folyoaggregator && /usr/bin/php scripts/maintenance/generate-stats.php --save >> logs/daily-stats.log 2>&1
 
 # Check system health every 30 minutes
-*/30 * * * * cd $FOLYO_DIR && /usr/bin/php scripts/maintenance/health-check.php >> logs/health-check.log 2>&1
+*/30 * * * * cd /var/www/html/folyoaggregator && /usr/bin/php scripts/maintenance/health-check.php >> logs/health-check.log 2>&1
 
 # System statistics (hourly)
-0 * * * * cd $FOLYO_DIR && /usr/bin/php scripts/maintenance/system-stats.php >> logs/system-stats.log 2>&1
+0 * * * * cd /var/www/html/folyoaggregator && /usr/bin/php scripts/maintenance/system-stats.php >> logs/system-stats.log 2>&1
 
 # =====================================================
 # END OF CRON CONFIGURATION
