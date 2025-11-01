@@ -37,7 +37,61 @@ if ($requestUri === '/test') {
     exit;
 }
 
-// For the home page, show a basic info page
+// For the home page, get system stats
+$systemStats = [];
+try {
+    require_once ROOT_PATH . '/vendor/autoload.php';
+    $dotenv = Dotenv\Dotenv::createImmutable(ROOT_PATH);
+    $dotenv->load();
+
+    $db = \FolyoAggregator\Core\Database::getInstance();
+
+    // Get asset count
+    $assetCount = $db->fetchOne("SELECT COUNT(*) as count FROM assets");
+    $systemStats['assets'] = (int)($assetCount['count'] ?? 0);
+
+    // Get price count
+    $priceCount = $db->fetchOne("SELECT COUNT(*) as count FROM prices");
+    $systemStats['prices'] = (int)($priceCount['count'] ?? 0);
+
+    // Get historical count
+    $historicalCount = $db->fetchOne("SELECT COUNT(*) as count FROM historical_ohlcv");
+    $systemStats['historical'] = (int)($historicalCount['count'] ?? 0);
+
+    // Get last price update
+    $lastUpdate = $db->fetchOne("SELECT MAX(timestamp) as last_update FROM prices");
+    $systemStats['last_update'] = $lastUpdate['last_update'] ?? 'N/A';
+
+    // Calculate data age
+    if ($lastUpdate && $lastUpdate['last_update']) {
+        $lastUpdateTime = strtotime($lastUpdate['last_update']);
+        $now = time();
+        $ageSeconds = $now - $lastUpdateTime;
+        $systemStats['data_age_seconds'] = $ageSeconds;
+
+        if ($ageSeconds < 120) {
+            $systemStats['data_status'] = 'fresh'; // < 2 minutes
+        } elseif ($ageSeconds < 300) {
+            $systemStats['data_status'] = 'recent'; // < 5 minutes
+        } else {
+            $systemStats['data_status'] = 'stale'; // > 5 minutes
+        }
+    } else {
+        $systemStats['data_status'] = 'unknown';
+    }
+
+} catch (Exception $e) {
+    // Silently fail, show basic page
+    error_log("FolyoAggregator stats error: " . $e->getMessage());
+    $systemStats = [
+        'assets' => 0,
+        'prices' => 0,
+        'historical' => 0,
+        'last_update' => 'N/A',
+        'data_status' => 'unknown',
+        'error' => $e->getMessage()
+    ];
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -113,6 +167,44 @@ if ($requestUri === '/test') {
             <p>PHP Version: <?php echo phpversion(); ?></p>
             <p>Server: <?php echo $_SERVER['SERVER_NAME']; ?></p>
             <p>Time: <?php echo date('Y-m-d H:i:s T'); ?></p>
+        </div>
+
+        <div class="info">
+            <h3>Live System Stats</h3>
+            <?php if (isset($systemStats['error'])): ?>
+                <p style="color: #f87171;">Error loading stats: <?php echo htmlspecialchars($systemStats['error']); ?></p>
+            <?php endif; ?>
+            <p>Assets: <strong><?php echo number_format($systemStats['assets']); ?></strong></p>
+            <p>Price Records: <strong><?php echo number_format($systemStats['prices']); ?></strong></p>
+            <p>Historical Candles: <strong><?php echo number_format($systemStats['historical']); ?></strong></p>
+            <?php if ($systemStats['last_update'] !== 'N/A'): ?>
+                <p>Last Price Update: <strong><?php echo $systemStats['last_update']; ?></strong></p>
+                <?php if (isset($systemStats['data_age_seconds'])): ?>
+                    <p>Data Age: <strong>
+                        <?php
+                        $age = $systemStats['data_age_seconds'];
+                        if ($age < 60) {
+                            echo $age . ' seconds ago';
+                        } elseif ($age < 3600) {
+                            echo floor($age / 60) . ' minutes ago';
+                        } else {
+                            echo floor($age / 3600) . ' hours ago';
+                        }
+                        ?>
+                    </strong>
+                    <?php if ($systemStats['data_status'] === 'fresh'): ?>
+                        <span style="color: #4ade80;">✓ Fresh</span>
+                    <?php elseif ($systemStats['data_status'] === 'recent'): ?>
+                        <span style="color: #fbbf24;">⚠ Recent</span>
+                    <?php else: ?>
+                        <span style="color: #f87171;">✗ Stale</span>
+                    <?php endif; ?>
+                    </p>
+                <?php endif; ?>
+            <?php endif; ?>
+            <p style="font-size: 0.85rem; margin-top: 1rem; opacity: 0.8;">
+                <em>Real-time data collection: 30-second intervals</em>
+            </p>
         </div>
 
         <div class="info">
