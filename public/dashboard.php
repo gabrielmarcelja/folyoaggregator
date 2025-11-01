@@ -122,44 +122,47 @@
             (SELECT SUM(market_cap) FROM assets WHERE is_active = 1) as total_market_cap
     ");
 
-    // Get top movers
-    $gainers = $db->fetchAll("
-        SELECT symbol, name, percent_change_24h, market_cap_rank, icon_url
-        FROM assets
-        WHERE is_active = 1 AND percent_change_24h IS NOT NULL
-        ORDER BY percent_change_24h DESC
-        LIMIT 5
-    ");
 
-    $losers = $db->fetchAll("
-        SELECT symbol, name, percent_change_24h, market_cap_rank, icon_url
-        FROM assets
-        WHERE is_active = 1 AND percent_change_24h IS NOT NULL
-        ORDER BY percent_change_24h ASC
-        LIMIT 5
-    ");
-
-    // Get recent prices with aggregation
+    // Get recent prices with our own % calculation (since we started collecting)
+    // Note: Will show 24h% once we have 24h of data. Currently shows % since data collection started.
     $recentPrices = $db->fetchAll("
         SELECT
             a.symbol,
             a.name,
             a.icon_url,
             a.market_cap_rank,
-            ap.price_vwap,
-            ap.price_simple_avg,
-            ap.confidence_score,
-            ap.exchange_count,
-            ap.total_volume_24h,
-            a.percent_change_24h,
-            ap.timestamp
-        FROM aggregated_prices ap
-        JOIN assets a ON a.id = ap.asset_id
-        WHERE ap.timestamp = (
-            SELECT MAX(timestamp)
-            FROM aggregated_prices ap2
-            WHERE ap2.asset_id = ap.asset_id
-        )
+            current_prices.price_avg,
+            current_prices.total_volume,
+            CASE
+                WHEN first_prices.price_avg_first IS NOT NULL THEN
+                    ((current_prices.price_avg - first_prices.price_avg_first) / first_prices.price_avg_first * 100)
+                ELSE NULL
+            END as percent_change_24h_calculated
+        FROM assets a
+        INNER JOIN (
+            SELECT
+                asset_id,
+                AVG(price) as price_avg,
+                SUM(volume_24h) as total_volume
+            FROM prices
+            WHERE timestamp >= NOW() - INTERVAL 5 MINUTE
+            GROUP BY asset_id
+        ) current_prices ON current_prices.asset_id = a.id
+        LEFT JOIN (
+            SELECT
+                p1.asset_id,
+                AVG(p1.price) as price_avg_first
+            FROM prices p1
+            INNER JOIN (
+                SELECT asset_id, MIN(timestamp) as first_timestamp
+                FROM prices
+                GROUP BY asset_id
+            ) first_ts ON p1.asset_id = first_ts.asset_id
+                AND p1.timestamp >= first_ts.first_timestamp
+                AND p1.timestamp < first_ts.first_timestamp + INTERVAL 30 MINUTE
+            GROUP BY p1.asset_id
+        ) first_prices ON first_prices.asset_id = a.id
+        WHERE a.is_active = 1 AND a.market_cap_rank IS NOT NULL
         ORDER BY a.market_cap_rank ASC
         LIMIT 20
     ");
@@ -249,11 +252,9 @@
                                 <tr>
                                     <th>Rank</th>
                                     <th>Asset</th>
-                                    <th>Price (VWAP)</th>
+                                    <th>Price</th>
                                     <th>24h %</th>
-                                    <th>Volume</th>
-                                    <th>Confidence</th>
-                                    <th>Exchanges</th>
+                                    <th>Volume (24h)</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -265,21 +266,14 @@
                                         <strong><?php echo $price['symbol']; ?></strong>
                                         <small class="text-muted"><?php echo $price['name']; ?></small>
                                     </td>
-                                    <td>$<?php echo number_format($price['price_vwap'], 2); ?></td>
-                                    <td class="<?php echo $price['percent_change_24h'] >= 0 ? 'price-up' : 'price-down'; ?>">
-                                        <?php echo number_format($price['percent_change_24h'], 2); ?>%
+                                    <td>$<?php echo number_format($price['price_avg'], 2); ?></td>
+                                    <td class="<?php echo ($price['percent_change_24h_calculated'] ?? 0) >= 0 ? 'price-up' : 'price-down'; ?>">
+                                        <?php
+                                        $change = $price['percent_change_24h_calculated'] ?? 0;
+                                        echo ($change >= 0 ? '+' : '') . number_format($change, 2);
+                                        ?>%
                                     </td>
-                                    <td>$<?php echo number_format($price['total_volume_24h']/1000000, 1); ?>M</td>
-                                    <td>
-                                        <div class="confidence-bar">
-                                            <div class="confidence-fill <?php
-                                                echo $price['confidence_score'] >= 80 ? 'confidence-high' :
-                                                    ($price['confidence_score'] >= 60 ? 'confidence-medium' : 'confidence-low');
-                                            ?>" style="width: <?php echo $price['confidence_score']; ?>%"></div>
-                                        </div>
-                                        <small><?php echo round($price['confidence_score']); ?>%</small>
-                                    </td>
-                                    <td><?php echo $price['exchange_count']; ?></td>
+                                    <td>$<?php echo number_format($price['total_volume']/1000000, 1); ?>M</td>
                                 </tr>
                                 <?php endforeach; ?>
                             </tbody>
@@ -290,30 +284,6 @@
 
             <!-- Side Panel -->
             <div class="col-md-4">
-                <!-- Top Gainers -->
-                <div class="stat-card mb-3">
-                    <h6 class="text-success"><i class="bi bi-trending-up"></i> Top Gainers</h6>
-                    <hr>
-                    <?php foreach ($gainers as $g): ?>
-                    <div class="d-flex justify-content-between mb-2">
-                        <span><?php echo $g['symbol']; ?></span>
-                        <span class="text-success">+<?php echo number_format($g['percent_change_24h'], 2); ?>%</span>
-                    </div>
-                    <?php endforeach; ?>
-                </div>
-
-                <!-- Top Losers -->
-                <div class="stat-card mb-3">
-                    <h6 class="text-danger"><i class="bi bi-trending-down"></i> Top Losers</h6>
-                    <hr>
-                    <?php foreach ($losers as $l): ?>
-                    <div class="d-flex justify-content-between mb-2">
-                        <span><?php echo $l['symbol']; ?></span>
-                        <span class="text-danger"><?php echo number_format($l['percent_change_24h'], 2); ?>%</span>
-                    </div>
-                    <?php endforeach; ?>
-                </div>
-
                 <!-- Exchange Status -->
                 <div class="stat-card">
                     <h6><i class="bi bi-server"></i> Exchange Status</h6>
