@@ -131,8 +131,8 @@
             a.name,
             a.icon_url,
             a.market_cap_rank,
+            a.volume_24h as total_volume,
             current_prices.price_avg,
-            current_prices.total_volume,
             CASE
                 WHEN first_prices.price_avg_first IS NOT NULL THEN
                     ((current_prices.price_avg - first_prices.price_avg_first) / first_prices.price_avg_first * 100)
@@ -142,8 +142,7 @@
         INNER JOIN (
             SELECT
                 asset_id,
-                AVG(price) as price_avg,
-                SUM(volume_24h) as total_volume
+                AVG(price) as price_avg
             FROM prices
             WHERE timestamp >= NOW() - INTERVAL 5 MINUTE
             GROUP BY asset_id
