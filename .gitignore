@@ -9,7 +9,9 @@ composer.lock
 
 # Logs
 /logs/*.log
+/logs/*.pid
 *.log
+*.pid
 
 # Cache
 /cache/
@@ -22,6 +24,8 @@ composer.lock
 *.swo
 *~
 .DS_Store
+.phpstorm.meta.php
+_ide_helper.php
 
 # Testing
 /coverage/
@@ -39,6 +43,11 @@ config/secrets.php
 # Database dumps
 *.sql
 *.dump
+
+# Backups
+*.bak
+*.backup
+backups/
 
 # Apache logs specific to this project
 /var/log/apache2/folyoaggregator-*
