@@ -72,7 +72,7 @@ echo "  Com 10 processos paralelos: " . round($total_time_seconds/3600/10, 1) . 
 echo "  Com 20 processos paralelos: " . round($total_time_seconds/3600/20, 1) . " horas\n";
 
 // Progresso atual
-require_once dirname(__DIR__) . '/vendor/autoload.php';
+require_once dirname(__DIR__, 2) . '/vendor/autoload.php';
 use FolyoAggregator\Core\Database;
 
 $db = Database::getInstance();

@@ -86,6 +86,14 @@ Frontend:   HTML, CSS, JavaScript (Dashboard)
 
 ---
 
+## 🚀 Quick Start
+
+**Want to get started in 10 minutes?** See our [Quick Start Guide](scripts/QUICKSTART.md) for a streamlined setup process.
+
+**Or follow the detailed installation below:**
+
+---
+
 ## 📦 Installation
 
 ### Prerequisites
@@ -117,20 +125,26 @@ GRANT ALL PRIVILEGES ON folyoaggregator.* TO 'folyo_user'@'localhost';
 FLUSH PRIVILEGES;
 
 # 5. Run migrations
-php scripts/migrate.php
+php scripts/setup/migrate.php
 
 # 6. Configure Apache VirtualHost
 # Point DocumentRoot to /var/www/html/folyoaggregator/public
 # ServerName: folyoaggregator.test
 
 # 7. Sync initial CMC data
-php scripts/sync-cmc.php --limit=200
+php scripts/setup/sync-cmc.php --limit=200
 
-# 8. Collect historical data
-php scripts/collect-full-history-paginated.php
+# 8. Sync complete metadata
+php scripts/setup/sync-metadata.php
 
-# 9. Start real-time collector
-php scripts/price-collector.php --daemon
+# 9. Collect historical data
+php scripts/collection/collect-full-history-paginated.php
+
+# 10. Start real-time collector
+./scripts/daemon/price-daemon.sh start
+
+# 11. Configure cron jobs
+crontab scripts/config/aggregator-cron.txt
 ```
 
 ---
@@ -318,33 +332,224 @@ GET /status
 
 ---
 
-## 🔧 Important Scripts
+## 📁 Scripts Directory
 
-### Data Collection
+All scripts are organized into subdirectories by purpose:
 
-```bash
-# Real-time price collector
-php scripts/price-collector.php
-
-# Collect complete history (TOP 50) with pagination
-php scripts/collect-full-history-paginated.php
-
-# Collect specific historical data
-php scripts/collect-historical.php --symbol=BTC --days=365 --timeframe=4h
-
-# Collect 1 year of history for TOP 50
-php scripts/collect-1year-history.php
+```
+scripts/
+├── setup/          # Initial setup (migrate, sync-cmc, sync-metadata)
+├── collection/     # Data collection (price-collector, historical)
+├── daemon/         # Daemon management (price-daemon.sh)
+├── maintenance/    # Monitoring & health (backup, health-check, stats)
+├── config/         # Configuration (aggregator-cron.txt)
+└── utils/          # Utilities (estimate-completion)
 ```
 
-### Synchronization
+### Essential Scripts
+
+**Setup (run once):**
+```bash
+php scripts/setup/migrate.php                          # Create database
+php scripts/setup/sync-cmc.php --limit=200             # Sync TOP 200 assets
+php scripts/setup/sync-metadata.php                    # Sync metadata
+```
+
+**Collection:**
+```bash
+php scripts/collection/collect-full-history-paginated.php  # Collect 8 years history
+php scripts/collection/price-collector.php --limit=50      # Real-time prices
+```
+
+**Daemon Management:**
+```bash
+./scripts/daemon/price-daemon.sh start|stop|restart|status
+```
+
+**Maintenance:**
+```bash
+./scripts/maintenance/backup-migrate.sh backup         # Create backup
+php scripts/maintenance/health-check.php               # System health
+php scripts/maintenance/generate-stats.php --save      # Daily statistics
+php scripts/maintenance/system-stats.php               # Quick stats
+php scripts/maintenance/check-migration-ready.php      # Migration readiness
+```
+
+**Complete documentation:** See [scripts/README.md](scripts/README.md)
+
+---
+
+## ⏰ Cron Configuration
+
+FolyoAggregator includes a comprehensive cron configuration for automated maintenance.
+
+### Install Cron Jobs
 
 ```bash
-# Sync CMC metadata
-php scripts/sync-cmc.php --limit=200
+# View configuration
+cat scripts/config/aggregator-cron.txt
 
-# Sync metadata only (descriptions, logos, etc)
-php scripts/sync-metadata.php
+# Install
+crontab scripts/config/aggregator-cron.txt
+
+# Verify
+crontab -l
 ```
+
+### Configured Jobs
+
+| Schedule | Job | Purpose |
+|----------|-----|---------|
+| Every minute | Price collection | Collect TOP 50 real-time prices |
+| Every hour | CMC quick sync | Update metadata |
+| Daily 1 AM | CMC full sync | Force complete sync |
+| Daily 2 AM | Metadata sync | Update descriptions/URLs |
+| Daily 2:30 AM | Generate stats | Daily statistics report |
+| Daily 3 AM | Backup | Full system backup |
+| Every 5 min | Health check | System monitoring |
+| Weekly | Database optimize | Clean and optimize tables |
+| Daily 5 AM | Log rotation | Clean old logs (>30 days) |
+
+**Important:** Edit paths and credentials in `scripts/config/aggregator-cron.txt` before installing!
+
+---
+
+## 💾 Backup & Recovery
+
+### Creating Backups
+
+```bash
+# Full system backup (code + database + configs)
+./scripts/maintenance/backup-migrate.sh backup
+
+# Quick database export only
+./scripts/maintenance/backup-migrate.sh quick-export
+```
+
+**Backup includes:**
+- Complete database dump
+- All PHP code
+- Configuration files (.env, Apache configs)
+- Logs (last 7 days)
+
+**Backup location:** `backups/folyoaggregator-backup-YYYY-MM-DD-HHMMSS.tar.gz`
+
+### Restoring from Backup
+
+```bash
+# Restore complete system
+./scripts/maintenance/backup-migrate.sh restore <backup-file.tar.gz>
+```
+
+**Restore process:**
+1. Extracts backup archive
+2. Imports database
+3. Restores files and configs
+4. Sets correct permissions
+5. Regenerates necessary configs
+
+### Automated Backups
+
+Backups run automatically every day at 3 AM (via cron).
+
+**Retention:** Keep last 30 days of backups, delete older ones.
+
+**Best practice:** Store backups off-server for disaster recovery!
+
+---
+
+## 🔍 Monitoring & Health Checks
+
+### Health Check
+
+Monitor system health in real-time:
+
+```bash
+# Human-readable output
+php scripts/maintenance/health-check.php
+
+# JSON output (for monitoring tools)
+php scripts/maintenance/health-check.php --json
+```
+
+**Checks:**
+- ✓ Database connectivity
+- ✓ Data freshness (<5 min)
+- ✓ Exchange health (>80% operational)
+- ✓ Historical data coverage
+- ✓ Disk space availability
+
+**Status levels:**
+- `healthy` - All systems operational
+- `warning` - Minor issues detected
+- `unhealthy` - Critical issues
+
+**Exit codes:**
+- `0` - Healthy
+- `1` - Warning or unhealthy
+
+**Integration:** Use with Nagios, Zabbix, or other monitoring tools via `--json` output.
+
+### Daily Statistics
+
+Generate comprehensive daily reports:
+
+```bash
+# Display report
+php scripts/maintenance/generate-stats.php
+
+# Save to logs/daily-stats/
+php scripts/maintenance/generate-stats.php --save
+```
+
+**Report includes:**
+- Assets overview (count, market cap, volume)
+- Price collection statistics (24h by exchange)
+- Historical data coverage (TOP 10 detail)
+- Top performers (gainers/losers)
+- Exchange health status
+- Database size breakdown
+
+### Quick Stats
+
+For quick status checks:
+
+```bash
+php scripts/maintenance/system-stats.php
+```
+
+Shows at-a-glance system status and cost comparison vs CMC.
+
+### Migration Readiness
+
+Before replacing CMC, verify system is ready:
+
+```bash
+php scripts/maintenance/check-migration-ready.php
+```
+
+**Verifies:**
+- [✓] Database setup complete
+- [✓] Assets synced (>100)
+- [✓] Historical data (>100K candles)
+- [✓] Price collection active
+- [✓] Exchanges operational (>80%)
+- [✓] Metadata complete (>90%)
+- [✓] API endpoints working
+
+### Real-Time Monitoring
+
+Monitor collectors in real-time:
+
+```bash
+./scripts/maintenance/monitor-collectors.sh
+```
+
+Auto-refreshes every 5 seconds with:
+- Active collector status
+- Recent logs
+- Database growth
+- Exchange status
 
 ---
 
@@ -505,7 +710,7 @@ dfd1ef151785484daf455a67e0523574
 mysql -u folyo_user -p'Folyo@2025Secure' folyoaggregator -e "SELECT COUNT(*) FROM historical_ohlcv;"
 
 # Collect data if needed
-php scripts/collect-full-history-paginated.php
+php scripts/collection/collect-full-history-paginated.php
 ```
 
 ### Issue: Exchange timeout

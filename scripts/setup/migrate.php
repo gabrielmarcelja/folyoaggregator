@@ -10,12 +10,12 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 // Load environment variables
-require_once dirname(__DIR__) . '/vendor/autoload.php';
+require_once dirname(__DIR__, 2) . '/vendor/autoload.php';
 
 use Dotenv\Dotenv;
 
 // Load .env file
-$dotenv = Dotenv::createImmutable(dirname(__DIR__));
+$dotenv = Dotenv::createImmutable(dirname(__DIR__, 2));
 $dotenv->load();
 
 // Database configuration

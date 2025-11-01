@@ -1,7 +1,7 @@
 #!/usr/bin/env php
 <?php
-require_once __DIR__ . '/../vendor/autoload.php';
-$dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/..');
+require_once dirname(__DIR__, 2) . '/vendor/autoload.php';
+$dotenv = Dotenv\Dotenv::createImmutable(dirname(__DIR__, 2));
 $dotenv->load();
 
 use FolyoAggregator\Core\Database;
