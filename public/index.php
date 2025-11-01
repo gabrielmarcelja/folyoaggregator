@@ -116,21 +116,59 @@ if ($requestUri === '/test') {
         </div>
 
         <div class="info">
-            <h3>API Endpoints (Active)</h3>
-            <div class="api-endpoint">
-                <a href="/api/v1/health" style="color: #fff; text-decoration: none;">/api/v1/health</a>
+            <h3>API Endpoints</h3>
+            <p style="font-size: 0.85rem; margin-bottom: 1rem; opacity: 0.9;">Click to test each endpoint</p>
+
+            <div style="text-align: left; margin-top: 1rem;">
+                <p style="font-weight: bold; margin-bottom: 0.5rem;">Health & Status:</p>
+                <div class="api-endpoint">
+                    <a href="/api/health" style="color: #fff; text-decoration: none;">/api/health</a>
+                </div>
+                <div class="api-endpoint">
+                    <a href="/api/status" style="color: #fff; text-decoration: none;">/api/status</a>
+                </div>
+                <div class="api-endpoint">
+                    <a href="/api/stats" style="color: #fff; text-decoration: none;">/api/stats</a>
+                </div>
             </div>
-            <div class="api-endpoint">
-                <a href="/api/v1/status" style="color: #fff; text-decoration: none;">/api/v1/status</a>
+
+            <div style="text-align: left; margin-top: 1rem;">
+                <p style="font-weight: bold; margin-bottom: 0.5rem;">Assets & Listings:</p>
+                <div class="api-endpoint">
+                    <a href="/api/listings?start=1&limit=10" style="color: #fff; text-decoration: none;">/api/listings</a>
+                </div>
+                <div class="api-endpoint">
+                    <a href="/api/assets/BTC" style="color: #fff; text-decoration: none;">/api/assets/{symbol}</a>
+                </div>
+                <div class="api-endpoint">
+                    <a href="/api/assets/search?q=bitcoin" style="color: #fff; text-decoration: none;">/api/assets/search</a>
+                </div>
+                <div class="api-endpoint">
+                    <a href="/api/assets/market-overview" style="color: #fff; text-decoration: none;">/api/assets/market-overview</a>
+                </div>
             </div>
-            <div class="api-endpoint">
-                <a href="/api/v1/assets" style="color: #fff; text-decoration: none;">/api/v1/assets</a>
+
+            <div style="text-align: left; margin-top: 1rem;">
+                <p style="font-weight: bold; margin-bottom: 0.5rem;">Prices & Historical:</p>
+                <div class="api-endpoint">
+                    <a href="/api/prices/BTC" style="color: #fff; text-decoration: none;">/api/prices/{symbol}</a>
+                </div>
+                <div class="api-endpoint">
+                    <a href="/api/historical/BTC?period=7d" style="color: #fff; text-decoration: none;">/api/historical/{symbol}</a>
+                </div>
+                <div class="api-endpoint">
+                    <a href="/api/ohlcv/BTC?timeframe=4h&limit=10" style="color: #fff; text-decoration: none;">/api/ohlcv/{symbol}</a>
+                </div>
+                <div class="api-endpoint">
+                    <a href="/api/chart/BTC" style="color: #fff; text-decoration: none;">/api/chart/{symbol}</a>
+                </div>
             </div>
-            <div class="api-endpoint">
-                <a href="/api/v1/prices/BTC" style="color: #fff; text-decoration: none;">/api/v1/prices/{symbol}</a>
-            </div>
-            <div class="api-endpoint">
-                <a href="/api/v1/exchanges" style="color: #fff; text-decoration: none;">/api/v1/exchanges</a>
+
+            <div style="text-align: left; margin-top: 1rem;">
+                <p style="font-weight: bold; margin-bottom: 0.5rem;">Exchanges:</p>
+                <div class="api-endpoint">
+                    <a href="/api/exchanges" style="color: #fff; text-decoration: none;">/api/exchanges</a>
+                </div>
             </div>
         </div>
 

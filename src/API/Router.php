@@ -8,7 +8,7 @@ use Exception;
  */
 class Router {
     private array $routes = [];
-    private string $basePath = '/api/v1';
+    private string $basePath = '/api';
 
     /**
      * Register a GET route

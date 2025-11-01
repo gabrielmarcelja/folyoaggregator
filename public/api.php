@@ -65,6 +65,115 @@ $router->get('/status', function() {
 });
 
 // ===========================
+// CMC-Compatible Listings Endpoint
+// ===========================
+
+// Main listings endpoint - returns top assets by market cap
+$router->get('/listings', function() {
+    $db = Database::getInstance();
+
+    $start = isset($_GET['start']) ? (int)$_GET['start'] : 1;
+    $limit = isset($_GET['limit']) ? min(500, (int)$_GET['limit']) : 100;
+    $convert = isset($_GET['convert']) ? $_GET['convert'] : 'USD';
+
+    // Calculate offset from start parameter (CMC uses 1-based indexing)
+    $offset = $start - 1;
+
+    $assets = $db->fetchAll("
+        SELECT
+            a.id,
+            a.cmc_id,
+            a.symbol,
+            a.name,
+            a.slug,
+            a.market_cap_rank as cmc_rank,
+            a.is_active,
+            a.circulating_supply,
+            a.total_supply,
+            a.max_supply,
+            a.date_added,
+            a.tags,
+            a.platform,
+            a.price_usd as price,
+            a.market_cap,
+            a.volume_24h,
+            a.percent_change_1h,
+            a.percent_change_24h,
+            a.percent_change_7d,
+            a.percent_change_30d,
+            a.percent_change_60d,
+            a.percent_change_90d,
+            a.fully_diluted_market_cap,
+            a.market_cap_dominance,
+            a.logo_url,
+            a.description,
+            a.website_url
+        FROM assets a
+        WHERE a.is_active = 1
+        AND a.market_cap_rank IS NOT NULL
+        ORDER BY a.market_cap_rank ASC
+        LIMIT ? OFFSET ?
+    ", [$limit, $offset]);
+
+    // Transform to CMC-compatible format
+    $data = [];
+    foreach ($assets as $asset) {
+        $data[] = [
+            'id' => $asset['cmc_id'] ?? $asset['id'],
+            'name' => $asset['name'],
+            'symbol' => $asset['symbol'],
+            'slug' => $asset['slug'],
+            'num_market_pairs' => 100, // Placeholder
+            'date_added' => $asset['date_added'],
+            'tags' => json_decode($asset['tags'] ?? '[]'),
+            'max_supply' => $asset['max_supply'],
+            'circulating_supply' => $asset['circulating_supply'],
+            'total_supply' => $asset['total_supply'],
+            'platform' => $asset['platform'] ? [
+                'name' => $asset['platform'],
+                'symbol' => $asset['platform']
+            ] : null,
+            'cmc_rank' => $asset['cmc_rank'],
+            'self_reported_circulating_supply' => null,
+            'self_reported_market_cap' => null,
+            'tvl_ratio' => null,
+            'last_updated' => date('c'),
+            'quote' => [
+                $convert => [
+                    'price' => (float)$asset['price'],
+                    'volume_24h' => (float)$asset['volume_24h'],
+                    'volume_change_24h' => null,
+                    'percent_change_1h' => (float)$asset['percent_change_1h'],
+                    'percent_change_24h' => (float)$asset['percent_change_24h'],
+                    'percent_change_7d' => (float)$asset['percent_change_7d'],
+                    'percent_change_30d' => (float)$asset['percent_change_30d'],
+                    'percent_change_60d' => (float)$asset['percent_change_60d'],
+                    'percent_change_90d' => (float)$asset['percent_change_90d'],
+                    'market_cap' => (float)$asset['market_cap'],
+                    'market_cap_dominance' => (float)$asset['market_cap_dominance'],
+                    'fully_diluted_market_cap' => (float)$asset['fully_diluted_market_cap'],
+                    'tvl' => null,
+                    'last_updated' => date('c')
+                ]
+            ]
+        ];
+    }
+
+    return [
+        'status' => [
+            'timestamp' => date('c'),
+            'error_code' => 0,
+            'error_message' => null,
+            'elapsed' => 10,
+            'credit_count' => 1,
+            'notice' => null,
+            'total_count' => count($assets)
+        ],
+        'data' => $data
+    ];
+});
+
+// ===========================
 // Asset Endpoints
 // ===========================
 
@@ -587,6 +696,157 @@ $router->get('/chart/{symbol}', function($params) {
         'symbol' => $symbol,
         'chart' => $chartData,
         'raw' => $prices,
+        'timestamp' => date('c')
+    ];
+});
+
+// Historical data endpoint with flexible periods (Folyo-compatible)
+$router->get('/historical/{symbol}', function($params) {
+    $db = Database::getInstance();
+    $symbol = strtoupper($params['symbol']);
+
+    // Parse query parameters
+    $period = $_GET['period'] ?? '7d';  // 24h, 7d, 30d, 1y, all
+    $timeframe = $_GET['timeframe'] ?? null;  // Auto-select if not specified
+    $limit = isset($_GET['limit']) ? min(5000, (int)$_GET['limit']) : null;
+
+    // Get asset
+    $asset = $db->fetchOne("
+        SELECT id, name FROM assets WHERE symbol = ? AND is_active = 1
+    ", [$symbol]);
+
+    if (!$asset) {
+        throw new Exception("Asset not found: $symbol");
+    }
+
+    // Determine timeframe and time range based on period
+    $timeRange = '';
+    $autoTimeframe = '4h';
+
+    switch ($period) {
+        case '24h':
+            $timeRange = 'AND h.timestamp >= NOW() - INTERVAL 24 HOUR';
+            $autoTimeframe = '1h';  // Prefer hourly for 24h
+            $limit = $limit ?? 24;
+            break;
+        case '7d':
+            $timeRange = 'AND h.timestamp >= NOW() - INTERVAL 7 DAY';
+            $autoTimeframe = '4h';
+            $limit = $limit ?? 42;  // 7 days * 6 candles/day
+            break;
+        case '30d':
+        case '1m':
+            $timeRange = 'AND h.timestamp >= NOW() - INTERVAL 30 DAY';
+            $autoTimeframe = '4h';
+            $limit = $limit ?? 180;  // 30 days * 6 candles/day
+            break;
+        case '90d':
+        case '3m':
+            $timeRange = 'AND h.timestamp >= NOW() - INTERVAL 90 DAY';
+            $autoTimeframe = '4h';
+            $limit = $limit ?? 540;
+            break;
+        case '1y':
+        case '365d':
+            $timeRange = 'AND h.timestamp >= NOW() - INTERVAL 365 DAY';
+            $autoTimeframe = '1d';  // Daily for 1 year
+            $limit = $limit ?? 365;
+            break;
+        case 'all':
+            $timeRange = '';
+            $autoTimeframe = '4h';
+            $limit = $limit ?? 2000;
+            break;
+        default:
+            throw new Exception("Invalid period. Use: 24h, 7d, 30d, 90d, 1y, all");
+    }
+
+    // Use specified timeframe or auto-selected one
+    $selectedTimeframe = $timeframe ?? $autoTimeframe;
+
+    // Build query
+    $query = "
+        SELECT
+            h.timestamp,
+            h.open_price as open,
+            h.high_price as high,
+            h.low_price as low,
+            h.close_price as close,
+            h.volume,
+            h.timeframe
+        FROM historical_ohlcv h
+        WHERE h.asset_id = ?
+        AND h.timeframe = ?
+        $timeRange
+        ORDER BY h.timestamp ASC
+    ";
+
+    if ($limit) {
+        $query .= " LIMIT ?";
+        $data = $db->fetchAll($query, [$asset['id'], $selectedTimeframe, $limit]);
+    } else {
+        $data = $db->fetchAll($query, [$asset['id'], $selectedTimeframe]);
+    }
+
+    // If no data with selected timeframe, try fallback
+    if (empty($data) && $timeframe === null) {
+        $fallbackTimeframes = ['4h', '1h', '1d'];
+        foreach ($fallbackTimeframes as $tf) {
+            if ($tf === $selectedTimeframe) continue;
+
+            $fallbackQuery = str_replace('LIMIT ?', '', $query);
+            $fallbackData = $limit
+                ? $db->fetchAll($query, [$asset['id'], $tf, $limit])
+                : $db->fetchAll($fallbackQuery, [$asset['id'], $tf]);
+
+            if (!empty($fallbackData)) {
+                $data = $fallbackData;
+                $selectedTimeframe = $tf;
+                break;
+            }
+        }
+    }
+
+    // Format for different output types
+    $format = $_GET['format'] ?? 'ohlcv';
+
+    if ($format === 'simple') {
+        // Simplified format (timestamp, price) for basic charts
+        $formatted = array_map(function($candle) {
+            return [
+                'timestamp' => $candle['timestamp'],
+                'price' => (float)$candle['close'],
+                'volume' => (float)$candle['volume']
+            ];
+        }, $data);
+    } else {
+        // Full OHLCV format
+        $formatted = array_map(function($candle) {
+            return [
+                'timestamp' => $candle['timestamp'],
+                'open' => (float)$candle['open'],
+                'high' => (float)$candle['high'],
+                'low' => (float)$candle['low'],
+                'close' => (float)$candle['close'],
+                'volume' => (float)$candle['volume']
+            ];
+        }, $data);
+    }
+
+    return [
+        'success' => true,
+        'symbol' => $symbol,
+        'name' => $asset['name'],
+        'period' => $period,
+        'timeframe' => $selectedTimeframe,
+        'format' => $format,
+        'data' => $formatted,
+        'count' => count($formatted),
+        'metadata' => [
+            'first_timestamp' => !empty($formatted) ? $formatted[0]['timestamp'] : null,
+            'last_timestamp' => !empty($formatted) ? end($formatted)['timestamp'] : null,
+            'data_points' => count($formatted)
+        ],
         'timestamp' => date('c')
     ];
 });
