@@ -2,134 +2,134 @@
 
 ![Dashboard Preview](image.png)
 
-**Sistema de Agregação de Dados de Criptomoedas**
+**Cryptocurrency Data Aggregation System**
 
-Sistema robusto de agregação de dados cripto que coleta preços em tempo real de múltiplas exchanges, calcula VWAP (Volume-Weighted Average Price), mantém histórico completo e fornece API unificada para acesso aos dados do mercado de criptomoedas.
-
----
-
-## 🎯 Objetivo
-
-Substituir completamente a dependência da API da CoinMarketCap na plataforma Folyo, oferecendo:
-
-✅ **Sem limites de requisições** - API própria sem rate limits
-✅ **Dados agregados** - Preços de múltiplas exchanges com VWAP
-✅ **Histórico completo** - Até 8 anos de dados históricos (desde 2017)
-✅ **Baixa latência** - Consultas diretas ao banco local
-✅ **Controle total** - Infraestrutura própria
-✅ **Sem custos de API** - Elimina pagamento mensal à CMC
-✅ **Expansível** - Fácil adicionar novas exchanges/moedas
+Robust crypto data aggregation system that collects real-time prices from multiple exchanges, calculates VWAP (Volume-Weighted Average Price), maintains complete historical data, and provides a unified API for accessing cryptocurrency market data.
 
 ---
 
-## 🚀 Status Atual (01/11/2025)
+## 🎯 Purpose
 
-### ✅ Sistema Pronto para Produção
+Completely replace CoinMarketCap API dependency in [@folyo-app](https://github.com/folyo-app), offering:
 
-**Dados:**
-- **151 ativos TOP 200** cadastrados (75.5% de cobertura)
-- **144 ativos com histórico** completo
-- **421,983 candles OHLCV** armazenados
-- **8.2 anos** de amplitude temporal (2017-08-17 até hoje)
-- **BTC/ETH:** 17,973 candles cada (~8 anos completos)
+✅ **No request limits** - Own API without rate limits
+✅ **Aggregated data** - Prices from multiple exchanges with VWAP
+✅ **Complete history** - Up to 8 years of historical data (since 2017)
+✅ **Low latency** - Direct queries to local database
+✅ **Full control** - Own infrastructure
+✅ **No API costs** - Eliminates monthly CMC payments
+✅ **Expandable** - Easy to add new exchanges/coins
 
-**Exchanges Integradas (10):**
-- Binance (principal), Coinbase, Kraken, KuCoin, Bybit
+---
+
+## 🚀 Current Status (11/01/2025)
+
+### ✅ Production Ready
+
+**Data:**
+- **151 TOP 200 assets** registered (75.5% coverage)
+- **144 assets with complete history**
+- **421,983 OHLCV candles** stored
+- **8.2 years** of temporal coverage (2017-08-17 to present)
+- **BTC/ETH:** 17,973 candles each (~8 complete years)
+
+**Integrated Exchanges (10):**
+- Binance (primary), Coinbase, Kraken, KuCoin, Bybit
 - OKX, Gate.io, Bitfinex, Huobi, Bitstamp
 
-**Metadados:**
-- 149 descrições (98.7%)
+**Metadata:**
+- 149 descriptions (98.7%)
 - 1,648 URLs (explorers, github, social)
 - 151 logos (100%)
-- Tags, categorias, supply info
+- Tags, categories, supply info
 
 **Performance:**
-- Banco de dados: ~160 MB total
-- Densidade de dados: 100% nos últimos 30 dias
-- Atualização em tempo real: a cada 1 minuto
+- Database: ~160 MB total
+- Data density: 100% for last 30 days
+- Real-time updates: every 1 minute
 
 ---
 
-## ⚡ Recursos Principais
+## ⚡ Key Features
 
-### 1. **Integração Multi-Exchange**
-Conecta-se a 10+ exchanges via CCXT (sem necessidade de API keys)
+### 1. **Multi-Exchange Integration**
+Connects to 10+ exchanges via CCXT (no API keys required)
 
-### 2. **Agregação de Preços em Tempo Real**
-Cálculo de VWAP (Volume-Weighted Average Price) e confidence score
+### 2. **Real-Time Price Aggregation**
+VWAP (Volume-Weighted Average Price) calculation and confidence scoring
 
-### 3. **Histórico Completo**
-Dados OHLCV com múltiplos timeframes:
-- **4h**: 414,315 candles (principal - 6 pontos/dia)
-- **1h**: 2,668 candles (24 pontos/dia)
-- **1d**: 5,000 candles (dados diários)
+### 3. **Complete Historical Data**
+OHLCV data with multiple timeframes:
+- **4h**: 414,315 candles (primary - 6 points/day)
+- **1h**: 2,668 candles (24 points/day)
+- **1d**: 5,000 candles (daily data)
 
-### 4. **API RESTful**
-Endpoints limpos, documentados e CMC-compatíveis
+### 4. **RESTful API**
+Clean, documented, and CMC-compatible endpoints
 
-### 5. **Dashboard Web**
-Interface visual para monitoramento de preços e status das exchanges
+### 5. **Web Dashboard**
+Visual interface for monitoring prices and exchange status
 
-### 6. **Alta Performance**
-Índices otimizados no banco de dados para queries rápidas
+### 6. **High Performance**
+Optimized database indexes for fast queries
 
 ---
 
-## 🛠️ Stack Tecnológico
+## 🛠️ Tech Stack
 
 ```
-Backend:    PHP 8.1+ com CCXT library
+Backend:    PHP 8.1+ with CCXT library
 Database:   MariaDB/MySQL
-Web Server: Apache com mod_rewrite
+Web Server: Apache with mod_rewrite
 Frontend:   HTML, CSS, JavaScript (Dashboard)
 ```
 
 ---
 
-## 📦 Instalação
+## 📦 Installation
 
-### Pré-requisitos
+### Prerequisites
 - PHP 8.1+
 - MariaDB/MySQL
-- Apache com mod_rewrite
+- Apache with mod_rewrite
 - Composer
 
-### Passos
+### Steps
 
 ```bash
-# 1. Clone para o diretório apropriado
+# 1. Clone to appropriate directory
 cd /var/www/html/
 git clone <repo-url> folyoaggregator
 
-# 2. Instale dependências
+# 2. Install dependencies
 cd folyoaggregator
 composer install
 
-# 3. Configure ambiente
+# 3. Configure environment
 cp .env.example .env
-# Edite .env com suas credenciais
+# Edit .env with your credentials
 
-# 4. Configure banco de dados
+# 4. Configure database
 mysql -u root -p
 CREATE DATABASE folyoaggregator;
 CREATE USER 'folyo_user'@'localhost' IDENTIFIED BY 'Folyo@2025Secure';
 GRANT ALL PRIVILEGES ON folyoaggregator.* TO 'folyo_user'@'localhost';
 FLUSH PRIVILEGES;
 
-# 5. Execute migrations
+# 5. Run migrations
 php scripts/migrate.php
 
-# 6. Configure VirtualHost Apache
-# Aponte DocumentRoot para /var/www/html/folyoaggregator/public
+# 6. Configure Apache VirtualHost
+# Point DocumentRoot to /var/www/html/folyoaggregator/public
 # ServerName: folyoaggregator.test
 
-# 7. Sincronize dados iniciais da CMC
+# 7. Sync initial CMC data
 php scripts/sync-cmc.php --limit=200
 
-# 8. Colete histórico
+# 8. Collect historical data
 php scripts/collect-full-history-paginated.php
 
-# 9. Inicie coletor em tempo real
+# 9. Start real-time collector
 php scripts/price-collector.php --daemon
 ```
 
@@ -142,34 +142,34 @@ php scripts/price-collector.php --daemon
 http://folyoaggregator.test/api
 ```
 
-### Principais Endpoints
+### Main Endpoints
 
-#### 📋 Listagens
+#### 📋 Listings
 
 ```bash
-# Lista de ativos por market cap (CMC-compatível)
+# Asset list by market cap (CMC-compatible)
 GET /listings?start=1&limit=100
 
-# Lista todos os ativos
+# List all assets
 GET /assets?sort=market_cap_rank
 
-# Busca por symbol/nome
+# Search by symbol/name
 GET /assets/search?q=bitcoin
 
 # Market overview (gainers, losers, stats)
 GET /assets/market-overview
 ```
 
-#### 💎 Ativos
+#### 💎 Assets
 
 ```bash
-# Detalhes completos de um ativo
+# Complete asset details
 GET /assets/{symbol}
 
-# Exemplo: GET /assets/BTC
+# Example: GET /assets/BTC
 ```
 
-**Resposta:**
+**Response:**
 ```json
 {
   "success": true,
@@ -191,45 +191,45 @@ GET /assets/{symbol}
 }
 ```
 
-#### 💰 Preços
+#### 💰 Prices
 
 ```bash
-# Preço agregado (VWAP)
+# Aggregated price (VWAP)
 GET /prices/{symbol}
 
-# Preços por exchange
+# Prices by exchange
 GET /prices/{symbol}/exchanges
 ```
 
-#### 📈 Histórico (NOVO - Recomendado!)
+#### 📈 Historical Data (NEW - Recommended!)
 
 ```bash
-# Histórico com períodos flexíveis
+# Historical data with flexible periods
 GET /historical/{symbol}?period={period}&format={format}
 ```
 
-**Parâmetros:**
-- `period`: `24h`, `7d`, `30d`, `90d`, `1y`, `all` (padrão: `7d`)
-- `timeframe`: `1h`, `4h`, `1d` (auto-selecionado)
-- `format`: `ohlcv` ou `simple` (timestamp+price)
-- `limit`: limita número de pontos
+**Parameters:**
+- `period`: `24h`, `7d`, `30d`, `90d`, `1y`, `all` (default: `7d`)
+- `timeframe`: `1h`, `4h`, `1d` (auto-selected)
+- `format`: `ohlcv` or `simple` (timestamp+price)
+- `limit`: limits number of data points
 
-**Exemplos:**
+**Examples:**
 ```bash
-# Gráfico de 7 dias
+# 7-day chart
 curl "http://folyoaggregator.test/api/historical/BTC"
 
-# Gráfico de 30 dias simplificado
+# 30-day simplified chart
 curl "http://folyoaggregator.test/api/historical/ETH?period=30d&format=simple"
 
-# Todo o histórico (até 8 anos)
+# All history (up to 8 years)
 curl "http://folyoaggregator.test/api/historical/BTC?period=all"
 
-# 1 ano com limite de 365 pontos
+# 1 year with 365 point limit
 curl "http://folyoaggregator.test/api/historical/SOL?period=1y&limit=365"
 ```
 
-**Resposta:**
+**Response:**
 ```json
 {
   "success": true,
@@ -258,191 +258,191 @@ curl "http://folyoaggregator.test/api/historical/SOL?period=1y&limit=365"
 }
 ```
 
-#### 📊 OHLCV (Exchange Específica)
+#### 📊 OHLCV (Specific Exchange)
 
 ```bash
-# Dados OHLCV de exchange específica
+# OHLCV data from specific exchange
 GET /ohlcv/{symbol}?timeframe=4h&exchange=binance&limit=100
 ```
 
-#### 📉 Gráficos
+#### 📉 Charts
 
 ```bash
-# Dados formatados para gráficos (últimas 24h)
+# Chart-formatted data (last 24h)
 GET /chart/{symbol}
 ```
 
-#### 📊 Estatísticas
+#### 📊 Statistics
 
 ```bash
-# Estatísticas do sistema
+# System statistics
 GET /stats
 
-# Status das exchanges
+# Exchange status
 GET /exchanges
 
-# Status de uma exchange específica
+# Specific exchange status
 GET /exchanges/{exchange_id}/status
 ```
 
-#### 🔍 Saúde do Sistema
+#### 🔍 System Health
 
 ```bash
 # Health check
 GET /health
 
-# Status detalhado
+# Detailed status
 GET /status
 ```
 
 ---
 
-## 🗄️ Estrutura do Banco de Dados
+## 🗄️ Database Structure
 
-### Tabelas Principais
+### Main Tables
 
-**13 tabelas** totalizando ~160 MB:
+**13 tables** totaling ~160 MB:
 
-1. **assets** (151) - Metadados completos dos ativos
-2. **historical_ohlcv** (421,983) - Dados históricos OHLCV
-3. **prices** (50,058) - Preços em tempo real por exchange
-4. **aggregated_prices** (7,956) - Preços agregados com VWAP
-5. **exchanges** (10) - Configuração das exchanges
-6. **asset_descriptions** (149) - Descrições detalhadas
+1. **assets** (151) - Complete asset metadata
+2. **historical_ohlcv** (421,983) - Historical OHLCV data
+3. **prices** (50,058) - Real-time prices per exchange
+4. **aggregated_prices** (7,956) - Aggregated prices with VWAP
+5. **exchanges** (10) - Exchange configuration
+6. **asset_descriptions** (149) - Detailed descriptions
 7. **asset_urls** (1,648) - URLs (explorers, github, social)
-8. **symbol_mappings** (30) - Mapeamentos CMC ↔ Exchange
-9. **cmc_sync_log** (5) - Log de sincronizações
-10-13. Auxiliares (migrations, api_keys, etc)
+8. **symbol_mappings** (30) - CMC ↔ Exchange mappings
+9. **cmc_sync_log** (5) - Synchronization logs
+10-13. Auxiliary (migrations, api_keys, etc)
 
-**Documentação completa:** Ver `docs/DATABASE_STRUCTURE.md`
+**Complete documentation:** See `docs/DATABASE_STRUCTURE.md`
 
 ---
 
-## 🔧 Scripts Importantes
+## 🔧 Important Scripts
 
-### Coleta de Dados
+### Data Collection
 
 ```bash
-# Coletor de preços em tempo real
+# Real-time price collector
 php scripts/price-collector.php
 
-# Coletar histórico completo (TOP 50) com paginação
+# Collect complete history (TOP 50) with pagination
 php scripts/collect-full-history-paginated.php
 
-# Coletar histórico específico
+# Collect specific historical data
 php scripts/collect-historical.php --symbol=BTC --days=365 --timeframe=4h
 
-# Coletar 1 ano de histórico para TOP 50
+# Collect 1 year of history for TOP 50
 php scripts/collect-1year-history.php
 ```
 
-### Sincronização
+### Synchronization
 
 ```bash
-# Sincronizar metadados da CMC
+# Sync CMC metadata
 php scripts/sync-cmc.php --limit=200
 
-# Sincronizar apenas metadados (descrições, logos, etc)
+# Sync metadata only (descriptions, logos, etc)
 php scripts/sync-metadata.php
 ```
 
 ---
 
-## 💻 Desenvolvimento
+## 💻 Development
 
-### Acessar Dashboard
+### Access Dashboard
 ```
 http://folyoaggregator.test/dashboard.php
 ```
 
-### Acesso ao Banco de Dados
+### Database Access
 ```bash
 mysql -u folyo_user -p'Folyo@2025Secure' folyoaggregator
 ```
 
-### Ver Logs
+### View Logs
 ```bash
-# Logs da aplicação
+# Application logs
 tail -f logs/app.log
 tail -f logs/price-collector.log
 tail -f logs/full-history-paginated.log
 
-# Logs do Apache
+# Apache logs
 tail -f /var/log/apache2/folyoaggregator-error.log
 ```
 
-### Testar Endpoints
+### Test Endpoints
 ```bash
 # Health check
 curl http://folyoaggregator.test/api/health
 
-# Listar TOP 10
+# List TOP 10
 curl http://folyoaggregator.test/api/listings?limit=10
 
-# Buscar Bitcoin
+# Search Bitcoin
 curl http://folyoaggregator.test/api/assets/BTC
 
-# Histórico de 7 dias
+# 7-day history
 curl "http://folyoaggregator.test/api/historical/BTC?period=7d"
 ```
 
 ---
 
-## 🔄 Migração da CMC para FolyoAggregator
+## 🔄 Migration from CMC to FolyoAggregator
 
-### Antes (usando CMC):
+### Before (using CMC):
 ```php
 $url = "https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest";
-$headers = ['X-CMC_PRO_API_KEY: sua-key-aqui'];
+$headers = ['X-CMC_PRO_API_KEY: your-key-here'];
 $response = file_get_contents($url, false, stream_context_create([
     'http' => ['header' => $headers]
 ]));
 ```
 
-### Depois (usando FolyoAggregator):
+### After (using FolyoAggregator):
 ```php
 $url = "http://folyoaggregator.test/api/listings";
-// Sem necessidade de API key!
+// No API key needed!
 $response = file_get_contents($url);
 ```
 
-**Benefícios:**
-- ✅ Sem rate limits
-- ✅ Sem custos
-- ✅ Dados históricos ilimitados
-- ✅ Controle total
-- ✅ Latência menor (local)
+**Benefits:**
+- ✅ No rate limits
+- ✅ No costs
+- ✅ Unlimited historical data
+- ✅ Full control
+- ✅ Lower latency (local)
 
 ---
 
-## 📊 Comparação: CMC vs FolyoAggregator
+## 📊 Comparison: CMC vs FolyoAggregator
 
-| Recurso | CoinMarketCap | FolyoAggregator |
+| Feature | CoinMarketCap | FolyoAggregator |
 |---------|---------------|-----------------|
-| **Preço** | $79-$999/mês | **Grátis** ✅ |
-| **Rate Limit** | 333-10K/dia | **Ilimitado** ✅ |
-| **Histórico** | API paga | **8 anos grátis** ✅ |
-| **Latência** | ~200-500ms | **<10ms** ✅ |
-| **Exchanges** | Dados da CMC | **10 exchanges** ✅ |
-| **VWAP** | Não | **Sim** ✅ |
-| **Confidence Score** | Não | **Sim** ✅ |
-| **Controle** | Limitado | **Total** ✅ |
+| **Price** | $79-$999/month | **Free** ✅ |
+| **Rate Limit** | 333-10K/day | **Unlimited** ✅ |
+| **Historical** | Paid API | **8 years free** ✅ |
+| **Latency** | ~200-500ms | **<10ms** ✅ |
+| **Exchanges** | CMC data | **10 exchanges** ✅ |
+| **VWAP** | No | **Yes** ✅ |
+| **Confidence Score** | No | **Yes** ✅ |
+| **Control** | Limited | **Full** ✅ |
 
 ---
 
-## 📖 Documentação
+## 📖 Documentation
 
-### Documentos Disponíveis
+### Available Documents
 
-- **`CONTEXT.md`** - Contexto completo do projeto
-- **`docs/API_IMPROVEMENTS.md`** - Melhorias implementadas
-- **`docs/DATABASE_STRUCTURE.md`** - Estrutura detalhada do banco
-- **`docs/API.md`** - Documentação completa da API
-- **`docs/MIGRATION_READINESS.md`** - Guia de migração
+- **`CONTEXT.md`** - Complete project context
+- **`docs/API_IMPROVEMENTS.md`** - Implemented improvements
+- **`docs/DATABASE_STRUCTURE.md`** - Detailed database structure
+- **`docs/API.md`** - Complete API documentation
+- **`docs/MIGRATION_READINESS.md`** - Migration guide
 
-### Credenciais
+### Credentials
 
-**Banco de Dados:**
+**Database:**
 ```
 Host: localhost
 Database: folyoaggregator
@@ -457,105 +457,104 @@ dfd1ef151785484daf455a67e0523574
 
 ---
 
-## 🎯 Estratégia de Coleta
+## 🎯 Collection Strategy
 
-### Priorização por Ranking
-1. **TOP 50**: Coleta a cada 5 minutos
-2. **TOP 51-200**: Coleta a cada 15 minutos
-3. **Histórico**: Coleta completa com paginação
+### Prioritization by Ranking
+1. **TOP 50**: Collect every 5 minutes
+2. **TOP 51-200**: Collect every 15 minutes
+3. **Historical**: Complete collection with pagination
 
 ### Timeframes
-- **4h**: Principal (6 candles/dia) - Ideal para 7d-1y
-- **1h**: Secundário (24 candles/dia) - Ideal para 24h
-- **1d**: Diário (1 candle/dia) - Ideal para +1y
+- **4h**: Primary (6 candles/day) - Ideal for 7d-1y
+- **1h**: Secondary (24 candles/day) - Ideal for 24h
+- **1d**: Daily (1 candle/day) - Ideal for +1y
 
 ---
 
-## ✅ O Que Funciona 100%
+## ✅ What Works 100%
 
-✅ **Dados históricos:** 421,983 candles (até 8 anos)
-✅ **Metadados:** 98.7% de cobertura
-✅ **API CMC-compatível:** Migração sem alterações
-✅ **Gráficos:** 24h, 7d, 30d, 90d, 1y, all
-✅ **Busca:** Por symbol e nome
-✅ **Ordenação:** Por market cap
-✅ **Tempo real:** Atualização a cada minuto
-✅ **VWAP:** Agregação de 10 exchanges
-✅ **Confidence Score:** Qualidade dos dados
+✅ **Historical data:** 421,983 candles (up to 8 years)
+✅ **Metadata:** 98.7% coverage
+✅ **CMC-compatible API:** Migration without changes
+✅ **Charts:** 24h, 7d, 30d, 90d, 1y, all
+✅ **Search:** By symbol and name
+✅ **Sorting:** By market cap
+✅ **Real-time:** Updates every minute
+✅ **VWAP:** Aggregation from 10 exchanges
+✅ **Confidence Score:** Data quality metric
 
 ---
 
-## 🚧 Roadmap Futuro
+## 🚧 Future Roadmap
 
-- [ ] Cache com Redis para melhor performance
-- [ ] WebSocket para updates em tempo real
-- [ ] Suporte a mais exchanges (15+)
-- [ ] Timeframe 1m para trading intraday
-- [ ] API v2 com GraphQL
-- [ ] Dashboard avançado com alertas
-- [ ] Export de dados (CSV, JSON, Excel)
+- [ ] Redis cache for better performance
+- [ ] WebSocket for real-time updates
+- [ ] Support for more exchanges (15+)
+- [ ] 1m timeframe for intraday trading
+- [ ] API v2 with GraphQL
+- [ ] Advanced dashboard with alerts
+- [ ] Data export (CSV, JSON, Excel)
 
 ---
 
 ## 🐛 Troubleshooting
 
-### Problema: Endpoint retorna vazio
+### Issue: Endpoint returns empty
 ```bash
-# Verificar se dados existem no banco
+# Check if data exists in database
 mysql -u folyo_user -p'Folyo@2025Secure' folyoaggregator -e "SELECT COUNT(*) FROM historical_ohlcv;"
 
-# Coletar dados se necessário
+# Collect data if needed
 php scripts/collect-full-history-paginated.php
 ```
 
-### Problema: Exchange timeout
+### Issue: Exchange timeout
 ```bash
-# Ver últimos erros
+# View recent errors
 mysql -u folyo_user -p'Folyo@2025Secure' folyoaggregator -e "SELECT exchange_id, last_error_message FROM exchanges WHERE last_error_at IS NOT NULL;"
 
-# Logs detalhados
+# Detailed logs
 tail -f logs/price-collector.log
 ```
 
-### Problema: API lenta
+### Issue: Slow API
 ```bash
-# Verificar índices
+# Check indexes
 mysql -u folyo_user -p'Folyo@2025Secure' folyoaggregator -e "SHOW INDEX FROM historical_ohlcv;"
 
-# Otimizar tabelas
+# Optimize tables
 mysql -u folyo_user -p'Folyo@2025Secure' folyoaggregator -e "OPTIMIZE TABLE historical_ohlcv;"
 ```
 
 ---
 
-## 📝 Notas Importantes
+## 📝 Important Notes
 
-⚠️ Sistema usa CCXT que **não requer API keys** para dados públicos
-⚠️ Banco está otimizado com índices apropriados
-⚠️ Logs são salvos em `/var/www/html/folyoaggregator/logs/`
-⚠️ Dashboard atualiza automaticamente a cada 30 segundos
-⚠️ VirtualHost configurado em `folyoaggregator.test`
-
----
-
-## 📄 Licença
-
-Private - Todos os direitos reservados
+⚠️ System uses CCXT which **does not require API keys** for public data
+⚠️ Database optimized with appropriate indexes
+⚠️ Logs saved in `/var/www/html/folyoaggregator/logs/`
+⚠️ Dashboard auto-updates every 30 seconds
+⚠️ VirtualHost configured at `folyoaggregator.test`
 
 ---
 
-## 👥 Contato
+## 📄 License
 
-Para questões e suporte, contate a equipe de desenvolvimento.
+Private - All rights reserved
+
+---
+
+## 👥 Contact
+
+For questions and support, contact the development team.
 
 ---
 
 ## 🎉 Status
 
-**✅ SISTEMA PRONTO PARA PRODUÇÃO**
+**✅ PRODUCTION READY**
 
-O FolyoAggregator está 100% funcional e pronto para substituir o CoinMarketCap na plataforma Folyo!
+FolyoAggregator is 100% functional and ready to replace CoinMarketCap in [@folyo-app](https://github.com/folyo-app)!
 
-**Última atualização:** 01/11/2025
-**Versão:** 1.1.0
-**Criado por:** Claude Assistant
+**Last update:** 11/01/2025
+**Version:** 1.2.0
