@@ -15,40 +15,40 @@ MAILTO=
 FOLYO_DIR=/var/www/html/folyoaggregator
 
 # =====================================================
-# PRICE COLLECTION (High Priority)
+# REAL-TIME PRICE COLLECTION (30-second intervals)
 # =====================================================
 
-# Restart price daemon every hour (in case it crashes)
-0 * * * * cd $FOLYO_DIR && ./scripts/price-daemon.sh restart >> logs/daemon-restart.log 2>&1
+# Price collector daemon (runs every minute, collects for ~50 seconds)
+# Collects real-time prices from 10 exchanges for top 50 assets
+* * * * * cd $FOLYO_DIR && /usr/bin/php scripts/collection/price-collector.php --limit=50 --interval=30 >> logs/price-collector.log 2>&1
 
-# Check daemon status every 10 minutes
-*/10 * * * * cd $FOLYO_DIR && ./scripts/price-daemon.sh status >> logs/daemon-status.log 2>&1
+# Alternative: Use daemon mode (uncomment to use instead of cron-based collection)
+# 0 * * * * cd $FOLYO_DIR && ./scripts/daemon/price-daemon.sh restart >> logs/daemon-restart.log 2>&1
+# */10 * * * * cd $FOLYO_DIR && ./scripts/daemon/price-daemon.sh status >> logs/daemon-status.log 2>&1
 
 # =====================================================
 # CMC SYNCHRONIZATION
 # =====================================================
 
-# Quick sync of top 20 coins every 15 minutes (no validation)
-*/15 * * * * cd $FOLYO_DIR && /usr/bin/php scripts/sync-cmc.php --limit=20 --no-validate >> logs/cmc-sync-quick.log 2>&1
+# Hourly sync of top 100 coins (metadata updates)
+0 * * * * cd $FOLYO_DIR && /usr/bin/php scripts/setup/sync-cmc.php --limit=100 >> logs/cmc-sync-hourly.log 2>&1
 
-# Hourly sync of top 100 coins (no validation for speed)
-0 * * * * cd $FOLYO_DIR && /usr/bin/php scripts/sync-cmc.php --limit=100 --no-validate >> logs/cmc-sync-hourly.log 2>&1
+# Daily full sync of top 200 coins with metadata (at 3 AM)
+0 3 * * * cd $FOLYO_DIR && /usr/bin/php scripts/setup/sync-cmc.php --limit=200 >> logs/cmc-sync-daily.log 2>&1
 
-# Daily full sync of top 200 coins with validation (at 3 AM)
-0 3 * * * cd $FOLYO_DIR && /usr/bin/php scripts/sync-cmc.php --limit=200 >> logs/cmc-sync-daily.log 2>&1
+# Weekly metadata refresh (Sundays at 2 AM)
+0 2 * * 0 cd $FOLYO_DIR && /usr/bin/php scripts/setup/sync-metadata.php >> logs/metadata-sync.log 2>&1
 
 # =====================================================
-# HISTORICAL DATA COLLECTION
+# HISTORICAL DATA GAP FILLING
 # =====================================================
 
-# Collect 1h candles for top 50 coins (every 2 hours)
-0 */2 * * * cd $FOLYO_DIR && /usr/bin/php scripts/collect-historical.php --timeframe=1h --days=7 --limit=50 >> logs/ohlcv-1h.log 2>&1
+# Fill missing candles daily at 4 AM (catches up on gaps)
+# This fills any missing 1h and 4h candles between last historical data and now
+0 4 * * * cd $FOLYO_DIR && /usr/bin/php scripts/collection/fill-recent-gap.php --limit=50 >> logs/gap-filler.log 2>&1
 
-# Collect 4h candles for top 100 coins (twice daily at 6AM and 6PM)
-0 6,18 * * * cd $FOLYO_DIR && /usr/bin/php scripts/collect-historical.php --timeframe=4h --days=30 --limit=100 >> logs/ohlcv-4h.log 2>&1
-
-# Collect daily candles for all tradeable coins (once daily at 2 AM)
-0 2 * * * cd $FOLYO_DIR && /usr/bin/php scripts/collect-historical.php --timeframe=1d --days=90 --limit=200 >> logs/ohlcv-1d.log 2>&1
+# Weekly comprehensive gap check (Sundays at 5 AM, check last 7 days)
+0 5 * * 0 cd $FOLYO_DIR && /usr/bin/php scripts/collection/fill-recent-gap.php --limit=100 --lookback=7 >> logs/gap-filler-weekly.log 2>&1
 
 # =====================================================
 # DATABASE MAINTENANCE
@@ -60,8 +60,8 @@ FOLYO_DIR=/var/www/html/folyoaggregator
 # Optimize tables weekly (Sunday at 4 AM)
 0 4 * * 0 cd $FOLYO_DIR && mariadb -u root -p1976 folyoaggregator -e "OPTIMIZE TABLE prices, aggregated_prices, historical_ohlcv;" >> logs/db-optimize.log 2>&1
 
-# Backup database daily (at 5 AM)
-0 5 * * * mysqldump -u root -p1976 folyoaggregator | gzip > $FOLYO_DIR/backups/folyoaggregator_$(date +\%Y\%m\%d).sql.gz 2>> $FOLYO_DIR/logs/backup.log
+# Backup database daily (at 5:30 AM) - using backup-migrate.sh
+30 5 * * * cd $FOLYO_DIR && ./scripts/maintenance/backup-migrate.sh backup >> logs/backup.log 2>&1
 
 # =====================================================
 # LOG ROTATION
@@ -78,10 +78,13 @@ FOLYO_DIR=/var/www/html/folyoaggregator
 # =====================================================
 
 # Generate daily stats report (at 9 AM)
-0 9 * * * cd $FOLYO_DIR && /usr/bin/php scripts/generate-stats.php >> logs/daily-stats.log 2>&1
+0 9 * * * cd $FOLYO_DIR && /usr/bin/php scripts/maintenance/generate-stats.php --save >> logs/daily-stats.log 2>&1
 
 # Check system health every 30 minutes
-*/30 * * * * cd $FOLYO_DIR && /usr/bin/php scripts/health-check.php >> logs/health-check.log 2>&1
+*/30 * * * * cd $FOLYO_DIR && /usr/bin/php scripts/maintenance/health-check.php >> logs/health-check.log 2>&1
+
+# System statistics (hourly)
+0 * * * * cd $FOLYO_DIR && /usr/bin/php scripts/maintenance/system-stats.php >> logs/system-stats.log 2>&1
 
 # =====================================================
 # END OF CRON CONFIGURATION

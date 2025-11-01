@@ -30,11 +30,16 @@ scripts/
 2. php scripts/setup/sync-cmc.php --limit=200
 3. php scripts/setup/sync-metadata.php
 4. php scripts/collection/collect-full-history-paginated.php
-5. ./scripts/daemon/price-daemon.sh start
-6. crontab scripts/config/aggregator-cron.txt
+5. Install cron jobs: crontab scripts/config/aggregator-cron.txt
+   (includes 30-second price collection + daily gap filling)
 ```
 
 **See [QUICKSTART.md](QUICKSTART.md) for detailed step-by-step guide.**
+
+**Data Collection Strategy:**
+- **Historical data** (8 years): collect-full-history-paginated.php (run once)
+- **Real-time prices** (30s intervals): price-collector.php (via cron every minute)
+- **Gap filling** (daily): fill-recent-gap.php (via cron at 4 AM)
 
 ---
 
@@ -140,28 +145,28 @@ Scripts for collecting price and historical data.
 
 ### price-collector.php
 
-**Purpose:** Collect real-time prices from multiple exchanges
+**Purpose:** Collect real-time prices from multiple exchanges (30-second intervals)
 
 **Usage:**
 ```bash
-# Collect TOP 50 assets, update every 60 seconds
-php scripts/collection/price-collector.php --limit=50 --interval=60
+# Collect TOP 50 assets, update every 30 seconds (RECOMMENDED)
+php scripts/collection/price-collector.php --limit=50 --interval=30
 
-# Collect TOP 200, single run
-php scripts/collection/price-collector.php --limit=200
+# Collect TOP 100, 60-second intervals
+php scripts/collection/price-collector.php --limit=100 --interval=60
 
 # Specific assets only
-php scripts/collection/price-collector.php --symbols=BTC,ETH,SOL
+php scripts/collection/price-collector.php --symbols=BTC,ETH,SOL --interval=30
 
-# Run continuously (daemon mode)
-php scripts/collection/price-collector.php --limit=50 --interval=60 --daemon
+# Show help
+php scripts/collection/price-collector.php --help
 ```
 
 **Options:**
-- `--limit=N` - Number of top assets to collect (default: 50)
-- `--interval=N` - Seconds between collections (default: 60)
+- `--limit=N` - Number of top assets to collect (default: 20)
+- `--interval=N` - Seconds between collections (default: 30)
 - `--symbols=X,Y,Z` - Collect specific symbols only
-- `--daemon` - Run continuously (use with daemon/price-daemon.sh)
+- `--help` - Show detailed help message
 
 **What it does:**
 - Connects to 10 exchanges (Binance, Coinbase, Kraken, etc.)
@@ -183,7 +188,17 @@ php scripts/collection/price-collector.php --limit=50 --interval=60 --daemon
 9. Huobi
 10. Bitstamp
 
-**When to run:** Continuously via cron or daemon (every minute for TOP 50)
+**When to run:**
+- **Recommended:** Every minute via cron (runs for ~50 seconds with 30s intervals)
+- **Alternative:** As daemon via price-daemon.sh (continuous background process)
+
+**Competitive frequency:** 30-second updates match CoinMarketCap's real-time data frequency
+
+**Recommended cron:**
+```bash
+# Every minute, 30-second intervals
+* * * * * cd /var/www/html/folyoaggregator && php scripts/collection/price-collector.php --limit=50 --interval=30 >> logs/price-collector.log 2>&1
+```
 
 ---
 
@@ -266,6 +281,97 @@ Total: 421,983 candles across 144 assets
 - Maintenance: Monthly for new assets
 
 **This is the BEST script for historical collection!**
+
+---
+
+### fill-recent-gap.php ⚡ **NEW**
+
+**Purpose:** Fill missing candles between last historical data and current time
+
+**Usage:**
+```bash
+# Daily gap filling (recommended)
+php scripts/collection/fill-recent-gap.php
+
+# Fill gaps for TOP 100 assets
+php scripts/collection/fill-recent-gap.php --limit=100
+
+# Check last 7 days for gaps
+php scripts/collection/fill-recent-gap.php --lookback=7
+
+# Fill only 1h timeframe
+php scripts/collection/fill-recent-gap.php --timeframe=1h
+```
+
+**Options:**
+- `--limit=N` - Number of top assets (default: 50)
+- `--timeframe=TF` - Timeframe: 1h, 4h, or both (default: both)
+- `--lookback=DAYS` - Days to check for gaps (default: 3)
+
+**What it does:**
+- Detects missing candles between last data point and now
+- Fetches missing candles from exchanges (Binance)
+- Fills gaps in both 1h and 4h timeframes
+- Skips assets with no gaps
+- Avoids duplicate insertions
+- Handles exchange rate limits gracefully
+
+**Why you need this:**
+The full history collector runs once to get 8 years of data. However, there's a gap between:
+- **Last historical candle** (e.g., yesterday at 04:00)
+- **Current time** (e.g., today at 16:00)
+
+This script fills that gap daily, ensuring continuous historical data for graphs.
+
+**Recommended cron:**
+```bash
+# Daily at 4 AM
+0 4 * * * cd /var/www/html/folyoaggregator && php scripts/collection/fill-recent-gap.php --limit=50 >> logs/gap-filler.log 2>&1
+
+# Weekly comprehensive check (Sundays at 5 AM)
+0 5 * * 0 cd /var/www/html/folyoaggregator && php scripts/collection/fill-recent-gap.php --limit=100 --lookback=7 >> logs/gap-filler-weekly.log 2>&1
+```
+
+**Example output:**
+```
+╔═══════════════════════════════════════════════════════════════╗
+║       FolyoAggregator Gap Filler                          ║
+╚═══════════════════════════════════════════════════════════════╝
+
+Configuration:
+  Assets: TOP 50
+  Timeframes: 1h, 4h
+  Lookback: 3 days
+  Started: 2025-11-01 04:00:00
+
+✓ Connected to binance
+
+🚀 Starting gap fill for 50 assets...
+──────────────────────────────────────────────────────────────────
+
+[ 1/50] #1   BTC      ✓ Filled 2 gap(s), 36 candles
+[ 2/50] #2   ETH      ✓ Filled 2 gap(s), 36 candles
+[ 3/50] #3   USDT     ✓ No gaps
+...
+
+══════════════════════════════════════════════════════════════════
+Summary:
+  Assets Processed: 50
+  Assets with Gaps: 12
+  Total Gaps Filled: 24
+  Total Candles Inserted: 864
+  Errors: 0
+  Completed: 2025-11-01 04:02:15
+
+✓ Gap filling completed successfully
+```
+
+**When to run:**
+- **Daily at 4 AM:** Catch up on yesterday's missing candles
+- **Weekly:** Comprehensive 7-day gap check
+- **After downtime:** If your price collector was offline
+
+**Works with:** price-collector.php (real-time prices) for complete data coverage
 
 ---
 
