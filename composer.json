@@ -31,9 +31,14 @@
     },
     "scripts": {
         "test": "phpunit",
-        "migrate": "php scripts/migrate.php",
-        "worker:prices": "php scripts/workers/price-updater.php",
-        "worker:history": "php scripts/workers/historical-collector.php"
+        "migrate": "php scripts/setup/migrate.php",
+        "sync:cmc": "php scripts/setup/sync-cmc.php",
+        "sync:metadata": "php scripts/setup/sync-metadata.php",
+        "collect:prices": "php scripts/collection/price-collector.php --once",
+        "collect:history": "php scripts/collection/collect-full-history-paginated.php",
+        "health:check": "php scripts/maintenance/health-check.php",
+        "stats": "php scripts/maintenance/generate-stats.php",
+        "lint": "find src -name '*.php' -exec php -l {} \\;"
     },
     "config": {
         "optimize-autoloader": true,
