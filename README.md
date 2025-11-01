@@ -1,5 +1,10 @@
 # 📊 FolyoAggregator
 
+[![PHP Version](https://img.shields.io/badge/PHP-8.1+-777BB4?logo=php&logoColor=white)](https://www.php.net/)
+[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![GitHub stars](https://img.shields.io/github/stars/gabrielmarcelja/folyoaggregator?style=social)](https://github.com/gabrielmarcelja/folyoaggregator/stargazers)
+[![GitHub issues](https://img.shields.io/github/issues/gabrielmarcelja/folyoaggregator)](https://github.com/gabrielmarcelja/folyoaggregator/issues)
+
 ![Dashboard Preview](image.png)
 
 **Cryptocurrency Data Aggregation System**
